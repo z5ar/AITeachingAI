@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Data
+custom_config.toml
+database.db
