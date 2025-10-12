@@ -1,0 +1,10 @@
+[project]
+name = "ata"
+version = "0.0.1"
+description = "AI teaching AI"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.119.0",
+    "uvicorn>=0.37.0",
+]
