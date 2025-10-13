@@ -5,21 +5,34 @@ from typing import Annotated
 from sqlalchemy.orm import Session
 from utils import dbengine
 from utils.database import User, SessionID
-from . import UserBaseTable
+from . import UserBaseRequest
 import bcrypt
+from api import ResponseBaseTable
 
 router = APIRouter()
 
-class UnregisterStatus(Enum):
-    success = {'code': 0, 'msg': 'Successfully unregistered.'}
-    invalid = {'code': 1, 'msg': 'Invalid password.'}
-    offline = {'code': 2, 'msg': 'Not logged in yet.'}
 
-class UnregisterTable(UserBaseTable):
+class UnregisterResponse(ResponseBaseTable):
+    pass
+
+
+class UnregisterStatus(Enum):
+    success = UnregisterResponse(code=0, msg='Successfully unregistered.')
+    invalid = UnregisterResponse(code=1, msg='Invalid password.')
+    offline = UnregisterResponse(code=2, msg='Not logged in yet.')
+
+
+UnregisterResponse.model_config = getattr(UnregisterResponse, 'model_config', {})
+UnregisterResponse.model_config.setdefault('json_schema_extra', {})['examples'] = [
+    {'code': s.value.code, 'msg': s.value.msg} for s in UnregisterStatus
+]
+
+
+class UnregisterRequest(UserBaseRequest):
     pass
 
 @router.post('/unregister', summary='注销账户', description='删除账户')
-def user_unregister(req: UnregisterTable, UUSessionID: Annotated[str|None, Cookie()] = None):
+def user_unregister(req: UnregisterRequest, UUSessionID: Annotated[str|None, Cookie()] = None) -> UnregisterResponse:
     userid = None
     if not UUSessionID:
         return UnregisterStatus.offline

@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from utils import dbengine, config
 from utils.database import User, SessionID
-from . import UserBaseTable
+from api import ResponseBaseTable
+from . import UserBaseRequest
 import bcrypt
 import secrets
 
@@ -25,18 +26,25 @@ def _gen_sessionid():
     return session_id
 
 
-class LoginStatus(Enum):
-    success = {'code': 0, 'msg': 'Successfully logged in.'}
-    invalid = {'code': 1, 'msg': 'Invalid username or password.'}
+class LoginResponse(ResponseBaseTable):
+    pass
 
-class LoginTable(UserBaseTable):
+class LoginStatus(Enum):
+    success = LoginResponse(code=0, msg='Successfully logged in.')
+    invalid = LoginResponse(code=1, msg='Invalid username or password.')
+
+LoginResponse.model_config = getattr(LoginResponse, 'model_config', {})
+LoginResponse.model_config.setdefault('json_schema_extra', {})['examples'] = [
+    {'code': s.value.code, 'msg': s.value.msg} for s in LoginStatus
+]
+class LoginRequest(UserBaseRequest):
     pass
 
 @router.post('/login', summary='用户登录', description='使用用户名和密码登录')
 def user_login(
-    req: LoginTable,
+    req: LoginRequest,
     response: Response
-):
+) -> LoginResponse:
     userid = None
     with Session(dbengine) as sss:
         query = sss\

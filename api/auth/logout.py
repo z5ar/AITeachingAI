@@ -5,16 +5,27 @@ from typing import Annotated
 from sqlalchemy.orm import Session
 from utils import dbengine
 from utils.database import SessionID
-
+from api import ResponseBaseTable
 router = APIRouter()
 
+
+class LogoutResponse(ResponseBaseTable):
+    pass
+
+
 class LogoutStatus(Enum):
-    success = {'code': 0, 'msg': 'Successfully logged out.'}
-    invalid = {'code': 1, 'msg': 'Not logged in yet.'}
+    success = LogoutResponse(code=0, msg='Successfully logged out.')
+    invalid = LogoutResponse(code=1, msg='Not logged in yet.')
 
 
-@router.post('/logout', summary='用户登出', description='退出登录，而非删除账户')
-def user_logout(UUSessionID: Annotated[str|None, Cookie()] = None):
+LogoutResponse.model_config = getattr(LogoutResponse, 'model_config', {})
+LogoutResponse.model_config.setdefault('json_schema_extra', {})['examples'] = [
+    {'code': s.value.code, 'msg': s.value.msg} for s in LogoutStatus
+]
+
+
+@router.post('/logout', summary='用户登出', description='退出登录，而非删除账户，使用浏览器Cookie实现，无需前端主动传递数据')
+def user_logout(UUSessionID: Annotated[str|None, Cookie()] = None) -> LogoutResponse:
     if not UUSessionID:
         return LogoutStatus.invalid
     with Session(dbengine) as sss:
