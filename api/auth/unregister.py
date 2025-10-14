@@ -45,7 +45,7 @@ def user_unregister(req: UnregisterRequest, UUSessionID: Annotated[str|None, Coo
         
         if res.username != req.username:
             return UnregisterResponse(status=UnregisterStatus.invalid)
-        if not bcrypt.checkpw(req.passwd.encode(), res.passwd_hash):
+        if not bcrypt.checkpw(req.passwd.encode(), res.passwd_hash.encode()):
             return UnregisterResponse(status=UnregisterStatus.invalid)
         
         sss.query(SessionID)\

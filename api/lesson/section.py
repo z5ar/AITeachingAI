@@ -45,7 +45,6 @@ class SectionModel(BaseModel):
 
 class SectionStatus(Enum):
     success = {'code':0, 'msg': 'Successfully got.'}
-    invalid = {'code':1, 'msg': 'Course ID doesn\'t exist.'}
 
 class SectionResponse(BaseModel):
     status: SectionStatus
@@ -55,8 +54,6 @@ class SectionResponse(BaseModel):
 def get_section_list(course_id: int) -> SectionResponse:
     ret: list[SectionModel] = list()
     with Session(dbengine) as sss:
-        if not sss.query(Course).filter(Course.id == course_id).count():
-            return SectionResponse(status=SectionStatus.invalid)
         res = sss.query(Section)\
             .filter(Section.course_id == course_id)\
             .all()
