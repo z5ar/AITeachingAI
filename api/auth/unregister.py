@@ -5,6 +5,7 @@ from typing import Annotated
 from sqlalchemy.orm import Session
 from utils import dbengine
 from utils.database import User, SessionID
+from utils.auth import get_userid_with_sessionid
 from . import UserBaseRequest
 from pydantic import BaseModel
 import bcrypt
@@ -24,23 +25,14 @@ class UnregisterRequest(UserBaseRequest):
 
 @router.post('/unregister', summary='注销账户', description='删除账户')
 def user_unregister(req: UnregisterRequest, UUSessionID: Annotated[str|None, Cookie()] = None) -> UnregisterResponse:
-    userid = None
-    if not UUSessionID:
+    user_id = get_userid_with_sessionid(UUSessionID)
+    if user_id == -1:
         return UnregisterResponse(status=UnregisterStatus.offline)
-    with Session(dbengine) as sss:
-        query = sss.query(SessionID)\
-            .filter(SessionID.session_id == UUSessionID)
-        res = query.first()
-        query.delete()
-        sss.commit()
-        if (not res) or (res.expired_at <= datetime.now()):
-            return UnregisterResponse(status=UnregisterStatus.offline)
-        userid = res.user_id
     
     with Session(dbengine) as sss:
         query = sss\
             .query(User)\
-            .filter(User.id == userid)
+            .filter(User.id == user_id)
         res = query.first()
         
         if res.username != req.username:
