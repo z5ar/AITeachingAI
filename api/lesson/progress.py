@@ -69,7 +69,7 @@ def get_progress(
 ) -> GetProgressResponse:
     user_id = get_userid_with_sessionid(UUSessionID)
     if user_id == -1:
-        return SetProgressResponse(status=SetProgressStatus.offline)
+        return GetProgressResponse(status=GetProgressStatus.offline)
     
     with Session(dbengine) as sss:
         query = sss.query(LearningProgress)\
@@ -106,7 +106,7 @@ class SetProgressResponse(BaseModel):
 @router.post('/{section_id}/set', summary='置学习进度')
 def set_progress(
     section_id:int,
-    UUSessionID:str, 
+    UUSessionID: Annotated[str, Cookie()], 
     new_progress:SetProgressModel
 ) -> SetProgressResponse:
     user_id = get_userid_with_sessionid(UUSessionID)
@@ -124,7 +124,7 @@ def set_progress(
                 LearningProgress.completed_at: new_progress.completed_at
             })
         else:
-            query.add(
+            sss.add(
                 LearningProgress(
                     section_id=section_id,
                     user_id=user_id,

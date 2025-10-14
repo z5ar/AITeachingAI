@@ -50,7 +50,7 @@ def user_login(
         
         if not res:
             return LoginResponse(status=LoginStatus.invalid)
-        if not bcrypt.checkpw(req.passwd.encode(), res.passwd_hash.encode()):
+        if not bcrypt.checkpw(req.passwd.encode(), res.passwd_hash):
             return LoginResponse(status=LoginStatus.invalid)
         
         sss.query(SessionID)\
