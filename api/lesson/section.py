@@ -1,10 +1,8 @@
 from fastapi import APIRouter
 from utils import dbengine
 from utils.database import CourseSection as Section
-from utils.database import Course
-from utils.database.course_section_bean import SectionType
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, JsonValue
 from typing import Annotated
 from enum import Enum
 router = APIRouter(prefix='/section')
@@ -14,26 +12,26 @@ class SectionModel(BaseModel):
     course_id: Annotated[int, Field(description='该小节所属课程的ID')]
     order: Annotated[int, Field(description='该小节在该课程中的顺序号')]
     title: Annotated[str, Field(description='标题')]
-    content_type: Annotated[SectionType, Field(description='该小节的内容类型，有\n`title`：章节标题\n`video`：视频\n`text`：文案\n`assignment`：作业')]
+    content: Annotated[JsonValue, Field(description='')]
     
     model_config = {
         'json_schema_extra': {
             'examples':[{
                 "id": 1, "course_id": 1, "order": 1,
                 "title": "Chapter 1: 给公猪做产后护理分几步？",
-                "content_type": "0"
+                "content": ""
             },{
                 "id": 2, "course_id": 1, "order": 2,
                 "title": "1-1 把猪圈门打开",
-                "content_type": "2"
+                "content": ""
             },{
                 "id": 3, "course_id": 1, "order": 3,
                 "title": "1-2 给猪做护理",
-                "content_type": "1"
+                "content": ""
             },{
                 "id": 4, "course_id": 1, "order": 4,
                 "title": "1-3 把猪圈门关上",
-                "content_type": "3"
+                "content": ""
             }]
         }
     }
@@ -58,6 +56,6 @@ def get_section_list(course_id: int) -> SectionResponse:
                 course_id=item.course_id,
                 order=item.order,
                 title=item.title,
-                content_type=item.content_type
+                content=item.content
             ))
     return SectionResponse(status=SectionStatus.success, sections=ret)

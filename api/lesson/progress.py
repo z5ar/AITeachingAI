@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Cookie
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, JsonValue
 from typing import Annotated
 from datetime import datetime
 from enum import Enum
@@ -15,17 +15,20 @@ class ProgressBaseModel(BaseModel):
     percentage: Annotated[float, Field(description='学习进度百分比，不带百分号的百分数')]
     time_spent: Annotated[int, Field(description='已学时间，单位秒')]
     completed_at: datetime|None = None
+    draft: JsonValue|None = None
 
     model_config = {
         'json_schema_extra': {
             'examples':[{
                 'percentage': 45.45,
                 'time_spent': 114514,
-                'completed_at': None
+                'completed_at': None,
+                'draft': dict()
             },{
                 'percentage': 100,
                 'time_spent': 1_919_810,
-                'completed_at': datetime(2025,10,10,10,10,10,101010)
+                'completed_at': datetime(2025,10,10,10,10,10,101010),
+                'draft': dict()
             }]
         }
     }
@@ -121,7 +124,8 @@ def set_progress(
             query.update({
                 LearningProgress.percentage: new_progress.percentage,
                 LearningProgress.time_spent: new_progress.time_spent,
-                LearningProgress.completed_at: new_progress.completed_at
+                LearningProgress.completed_at: new_progress.completed_at,
+                LearningProgress.draft: new_progress.draft
             })
         else:
             sss.add(
@@ -130,7 +134,8 @@ def set_progress(
                     user_id=user_id,
                     percentage=new_progress.percentage,
                     time_spent=new_progress.time_spent,
-                    completed_at=new_progress.completed_at
+                    completed_at=new_progress.completed_at,
+                    draft=new_progress.draft
                 )
             )
         sss.commit()

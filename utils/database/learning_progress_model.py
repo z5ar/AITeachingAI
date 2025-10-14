@@ -11,6 +11,7 @@ class LearningProgress(Base):
     time_spent = sa.Column(sa.Integer, default=0)
     started_at = sa.Column(sa.DateTime, default=datetime.now)
     completed_at = sa.Column(sa.DateTime)
+    draft = sa.Column(sa.JSON)
 
     __table_args__ = (
         sa.Index('prg_idx', 'user_id', 'section_id', unique=True),
