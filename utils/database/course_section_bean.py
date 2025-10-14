@@ -2,12 +2,13 @@ from . import Base, sa
 from enum import Enum
 
 class SectionType(Enum):
-    video = 1
-    text = 2
-    assignment = 3
-    title = 0
+    video = 'video'
+    text = 'text'
+    assignment = 'assignment'
+    title = 'title'
 
 class CourseSection(Base):
+    
     __tablename__ = 'course_section'
 
     id = sa.Column(sa.Integer, primary_key=True)

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from utils import dbengine, config
 from utils.database import User, SessionID
-from api import ResponseBaseTable
+from pydantic import BaseModel
 from . import UserBaseRequest
 import bcrypt
 import secrets
@@ -25,18 +25,13 @@ def _gen_sessionid():
         session_id= _gen_sessionid()
     return session_id
 
-
-class LoginResponse(ResponseBaseTable):
-    pass
-
 class LoginStatus(Enum):
-    success = LoginResponse(code=0, msg='Successfully logged in.')
-    invalid = LoginResponse(code=1, msg='Invalid username or password.')
+    success = {'code': 0, 'msg': 'Successfully logged in.'}
+    invalid = {'code': 1, 'msg': 'Invalid username or password.'}
 
-LoginResponse.model_config = getattr(LoginResponse, 'model_config', {})
-LoginResponse.model_config.setdefault('json_schema_extra', {})['examples'] = [
-    {'code': s.value.code, 'msg': s.value.msg} for s in LoginStatus
-]
+class LoginResponse(BaseModel):
+    status: LoginStatus
+
 class LoginRequest(UserBaseRequest):
     pass
 
@@ -54,9 +49,9 @@ def user_login(
         res = query.first()
         
         if not res:
-            return LoginStatus.invalid
+            return LoginResponse(status=LoginStatus.invalid)
         if not bcrypt.checkpw(req.passwd.encode(), res.passwd_hash):
-            return LoginStatus.invalid
+            return LoginResponse(status=LoginStatus.invalid)
         
         sss.query(SessionID)\
             .filter(SessionID.user_id == res.id)\
@@ -78,4 +73,4 @@ def user_login(
             .filter(User.id == userid)\
             .update({User.logged_in_at: datetime.now()})
         sss.commit()
-    return LoginStatus.success
+    return LoginResponse(status=LoginStatus.success)

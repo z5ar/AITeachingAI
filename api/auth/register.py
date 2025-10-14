@@ -5,26 +5,17 @@ from utils import dbengine
 from utils.database import User
 from fastapi import APIRouter
 from . import UserBaseRequest
+from pydantic import BaseModel
 import bcrypt
-from api import ResponseBaseTable
 
 router = APIRouter()
 
-
-class RegisterResponse(ResponseBaseTable):
-    pass
-
-
 class RegisterStatus(Enum):
-    success = RegisterResponse(code=0, msg='Successfully registered. ')
-    existed = RegisterResponse(code=1, msg='User existed.')
+    success = {'code': 0, 'msg': 'Successfully registered. '}
+    existed = {'code': 1, 'msg': 'User existed.'}
 
-
-RegisterResponse.model_config = getattr(RegisterResponse, 'model_config', {})
-RegisterResponse.model_config.setdefault('json_schema_extra', {})['examples'] =[
-    {'code': s.value.code, 'msg': s.value.msg} for s in RegisterStatus
-]
-
+class RegisterResponse(BaseModel):
+    status: RegisterStatus
 
 class RegisterRequest(UserBaseRequest):
     pass
@@ -44,7 +35,7 @@ def user_register(req: RegisterRequest) -> RegisterResponse:
             .filter(User.deleted_at == None)\
             .count()
         if res:
-            return RegisterStatus.existed
+            return RegisterResponse(status=RegisterStatus.existed)
         salt = bcrypt.gensalt()
         passwd_hash = bcrypt.hashpw(req.passwd.encode(), salt)
         sss.add(User(
@@ -53,4 +44,4 @@ def user_register(req: RegisterRequest) -> RegisterResponse:
             created_at=datetime.now()
         ))
         sss.commit()
-    return RegisterStatus.success
+    return RegisterResponse(status=RegisterStatus.success)
