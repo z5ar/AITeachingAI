@@ -15,3 +15,4 @@ debug*
 # Data
 custom_config.toml
 database.db
+*.code-workspace
