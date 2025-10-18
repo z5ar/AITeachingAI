@@ -1,3 +1,5 @@
+from random import randint
+
 def judge_answer(
     ans: str,
     std: str,
@@ -17,3 +19,7 @@ def judge_answer(
         score (int): AI判断该答案可以得到的分数
         comment (str): AI给出的评语
     '''
+
+    # 暂且以随机数代替
+    score = randint(0, mscore)
+    return score, f'恭喜您在AI打分中取得了{score}/{mscore}分的好成绩！'
