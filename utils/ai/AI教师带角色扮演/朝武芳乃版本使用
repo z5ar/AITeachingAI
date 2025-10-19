@@ -1,0 +1,7 @@
+# 创建朝武芳乃协议
+yoshino_protocol = AsamiYoshinoProtocol()
+
+# 初始化AI教师
+ai_teacher = AIResponse("gpt-3.5-turbo", "your-api-key", yoshino_protocol)
+
+# 正常使用所有教学功能
