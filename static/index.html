@@ -1,7 +1,1215 @@
 <!DOCTYPE html>
+<html lang="zh-CN">
 <head>
-    <title>Hello, world!</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动漫AI教师课堂</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- Tailwind配置 - 调整为更动漫化的色彩 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF6B9B', // 主色调：粉色系，更符合动漫美少女形象
+                        secondary: '#7B61FF', // 辅助色：紫色，增加梦幻感
+                        accent: '#FFD166', // 强调色：亮黄色，用于重点突出
+                        neutral: {
+                            800: '#1A1A2E',
+                            700: '#16213E',
+                            600: '#0F3460',
+                            500: '#533483',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        anime: ['"Noto Sans JP"', '"Comic Sans MS"', 'sans-serif'] // 更适合动漫风格的字体
+                    },
+                    boxShadow: {
+                        'dialog': '0 10px 30px -5px rgba(255, 107, 155, 0.3)',
+                        'button': '0 4px 8px -1px rgba(123, 97, 255, 0.3)',
+                        'card': '0 20px 30px -10px rgba(0, 0, 0, 0.2)',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            }
+            .text-shadow-glow {
+                text-shadow: 0 0 10px rgba(255, 107, 155, 0.7);
+            }
+            .backdrop-blur {
+                backdrop-filter: blur(10px);
+            }
+            .character-appear {
+                animation: fadeInUp 0.8s ease forwards;
+            }
+            .dialog-appear {
+                animation: fadeInUp 0.5s ease 0.3s forwards;
+                opacity: 0;
+            }
+            .float-effect {
+                animation: float 6s ease-in-out infinite;
+            }
+            .button-hover {
+                transition: all 0.2s ease;
+            }
+            .button-hover:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 6px 12px -2px rgba(123, 97, 255, 0.4);
+            }
+            .upload-preview {
+                width: 100%;
+                height: 150px;
+                object-fit: cover;
+                border-radius: 0.5rem;
+                transition: all 0.3s ease;
+            }
+            .upload-preview:hover {
+                transform: scale(1.02);
+            }
+            .settings-overlay {
+                background-color: rgba(0, 0, 0, 0.7);
+                backdrop-filter: blur(5px);
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+    </style>
 </head>
-<body>
-    <h1>Hello, world!</h1>
+
+<body class="font-anime bg-neutral-900 text-white min-h-screen overflow-x-hidden">
+    <!-- 音频控制（隐藏式） -->
+    <audio id="backgroundMusic" loop>
+        <source src="" type="audio/mpeg"> <!-- 这里需要添加动漫风格的背景音乐 -->
+    </audio>
+    <audio id="buttonSound">
+        <source src="" type="audio/mpeg"> <!-- 这里需要添加点击音效 -->
+    </audio>
+    <audio id="dialogSound">
+        <source src="" type="audio/mpeg"> <!-- 这里需要添加对话音效 -->
+    </audio>
+    
+    <!-- 图片上传设置弹窗 -->
+    <div id="settingsModal" class="fixed inset-0 z-50 flex items-center justify-center hidden settings-overlay">
+        <div class="bg-neutral-800 rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto mx-4 border-2 border-primary/50">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-primary">自定义图片设置 <i class="fa fa-picture-o ml-2"></i></h2>
+                <button id="closeSettingsBtn" class="text-neutral-300 hover:text-white text-xl">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 进入页面背景图 -->
+                <div class="bg-neutral-700/50 rounded-xl p-4">
+                    <h3 class="text-lg font-bold mb-3 text-white">进入页面背景</h3>
+                    <img id="entryBackgroundPreview" src="https://picsum.photos/id/175/1920/1080" alt="进入页面背景预览" class="upload-preview mb-3">
+                    <input type="file" id="entryBackgroundUpload" accept="image/*" class="w-full text-sm text-neutral-300">
+                    <button data-target="entryBackground" class="reset-image mt-2 text-xs text-secondary hover:text-primary">
+                        <i class="fa fa-refresh mr-1"></i> 恢复默认
+                    </button>
+                </div>
+                
+                <!-- 主菜单背景图 -->
+                <div class="bg-neutral-700/50 rounded-xl p-4">
+                    <h3 class="text-lg font-bold mb-3 text-white">主菜单背景</h3>
+                    <img id="mainMenuBackgroundPreview" src="https://picsum.photos/id/237/1920/1080" alt="主菜单背景预览" class="upload-preview mb-3">
+                    <input type="file" id="mainMenuBackgroundUpload" accept="image/*" class="w-full text-sm text-neutral-300">
+                    <button data-target="mainMenuBackground" class="reset-image mt-2 text-xs text-secondary hover:text-primary">
+                        <i class="fa fa-refresh mr-1"></i> 恢复默认
+                    </button>
+                </div>
+                
+                <!-- 小萌老师立绘 -->
+                <div class="bg-neutral-700/50 rounded-xl p-4">
+                    <h3 class="text-lg font-bold mb-3 text-white">小萌老师立绘</h3>
+                    <img id="teacherMainPreview" src="https://picsum.photos/id/64/400/800" alt="小萌老师预览" class="upload-preview mb-3 object-contain" style="height: 200px;">
+                    <input type="file" id="teacherMainUpload" accept="image/*" class="w-full text-sm text-neutral-300">
+                    <button data-target="teacherMain" class="reset-image mt-2 text-xs text-secondary hover:text-primary">
+                        <i class="fa fa-refresh mr-1"></i> 恢复默认
+                    </button>
+                </div>
+                
+                <!-- 小葵老师立绘 -->
+                <div class="bg-neutral-700/50 rounded-xl p-4">
+                    <h3 class="text-lg font-bold mb-3 text-white">小葵老师立绘</h3>
+                    <img id="teacherKuiPreview" src="https://picsum.photos/id/65/400/800" alt="小葵老师预览" class="upload-preview mb-3 object-contain" style="height: 200px;">
+                    <input type="file" id="teacherKuiUpload" accept="image/*" class="w-full text-sm text-neutral-300">
+                    <button data-target="teacherKui" class="reset-image mt-2 text-xs text-secondary hover:text-primary">
+                        <i class="fa fa-refresh mr-1"></i> 恢复默认
+                    </button>
+                </div>
+                
+                <!-- 小枫老师立绘 -->
+                <div class="bg-neutral-700/50 rounded-xl p-4">
+                    <h3 class="text-lg font-bold mb-3 text-white">小枫老师立绘</h3>
+                    <img id="teacherFengPreview" src="https://picsum.photos/id/91/400/800" alt="小枫老师预览" class="upload-preview mb-3 object-contain" style="height: 200px;">
+                    <input type="file" id="teacherFengUpload" accept="image/*" class="w-full text-sm text-neutral-300">
+                    <button data-target="teacherFeng" class="reset-image mt-2 text-xs text-secondary hover:text-primary">
+                        <i class="fa fa-refresh mr-1"></i> 恢复默认
+                    </button>
+                </div>
+                
+                <!-- 课程列表背景 -->
+                <div class="bg-neutral-700/50 rounded-xl p-4">
+                    <h3 class="text-lg font-bold mb-3 text-white">课程列表背景</h3>
+                    <img id="courseListBackgroundPreview" src="https://picsum.photos/id/325/1920/1080" alt="课程列表背景预览" class="upload-preview mb-3">
+                    <input type="file" id="courseListBackgroundUpload" accept="image/*" class="w-full text-sm text-neutral-300">
+                    <button data-target="courseListBackground" class="reset-image mt-2 text-xs text-secondary hover:text-primary">
+                        <i class="fa fa-refresh mr-1"></i> 恢复默认
+                    </button>
+                </div>
+                
+                <!-- 数学课程背景 -->
+                <div class="bg-neutral-700/50 rounded-xl p-4">
+                    <h3 class="text-lg font-bold mb-3 text-white">数学课程背景</h3>
+                    <img id="mathBackgroundPreview" src="https://picsum.photos/id/433/1920/1080" alt="数学课程背景预览" class="upload-preview mb-3">
+                    <input type="file" id="mathBackgroundUpload" accept="image/*" class="w-full text-sm text-neutral-300">
+                    <button data-target="mathBackground" class="reset-image mt-2 text-xs text-secondary hover:text-primary">
+                        <i class="fa fa-refresh mr-1"></i> 恢复默认
+                    </button>
+                </div>
+                
+                <!-- 科学课程背景 -->
+                <div class="bg-neutral-700/50 rounded-xl p-4">
+                    <h3 class="text-lg font-bold mb-3 text-white">科学课程背景</h3>
+                    <img id="scienceBackgroundPreview" src="https://picsum.photos/id/431/1920/1080" alt="科学课程背景预览" class="upload-preview mb-3">
+                    <input type="file" id="scienceBackgroundUpload" accept="image/*" class="w-full text-sm text-neutral-300">
+                    <button data-target="scienceBackground" class="reset-image mt-2 text-xs text-secondary hover:text-primary">
+                        <i class="fa fa-refresh mr-1"></i> 恢复默认
+                    </button>
+                </div>
+                
+                <!-- 历史课程背景 -->
+                <div class="bg-neutral-700/50 rounded-xl p-4">
+                    <h3 class="text-lg font-bold mb-3 text-white">历史课程背景</h3>
+                    <img id="historyBackgroundPreview" src="https://picsum.photos/id/437/1920/1080" alt="历史课程背景预览" class="upload-preview mb-3">
+                    <input type="file" id="historyBackgroundUpload" accept="image/*" class="w-full text-sm text-neutral-300">
+                    <button data-target="historyBackground" class="reset-image mt-2 text-xs text-secondary hover:text-primary">
+                        <i class="fa fa-refresh mr-1"></i> 恢复默认
+                    </button>
+                </div>
+                
+                <!-- 报告页面背景 -->
+                <div class="bg-neutral-700/50 rounded-xl p-4">
+                    <h3 class="text-lg font-bold mb-3 text-white">报告页面背景</h3>
+                    <img id="reportBackgroundPreview" src="https://picsum.photos/id/452/1920/1080" alt="报告页面背景预览" class="upload-preview mb-3">
+                    <input type="file" id="reportBackgroundUpload" accept="image/*" class="w-full text-sm text-neutral-300">
+                    <button data-target="reportBackground" class="reset-image mt-2 text-xs text-secondary hover:text-primary">
+                        <i class="fa fa-refresh mr-1"></i> 恢复默认
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mt-8 text-center">
+                <button id="saveSettingsBtn" class="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-10 rounded-full shadow-button button-hover">
+                    <i class="fa fa-save mr-2"></i> 保存设置
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 进入页面 -->
+    <div id="entryPage" class="relative w-full h-screen flex items-center justify-center overflow-hidden">
+        <div class="absolute inset-0 z-0">
+            <!-- 动漫风格教室背景图 - 更换为二次元风格 -->
+            <img id="entryBackground" src="https://picsum.photos/id/175/1920/1080" alt="动漫教室背景" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-b from-neutral-900/40 to-neutral-900/70"></div>
+        </div>
+        
+        <div class="relative z-10 text-center px-4">
+            <h1 class="text-[clamp(2.5rem,8vw,5rem)] font-bold mb-6 text-shadow-glow animate-pulse text-primary">
+                动漫AI课堂
+            </h1>
+            <p class="text-[clamp(1rem,3vw,1.5rem)] mb-10 max-w-2xl mx-auto text-white text-shadow">
+                今天也要和可爱的AI老师一起快乐学习哦～
+            </p>
+            <button id="enterClassroomBtn" class="bg-primary hover:bg-primary/90 text-white font-bold py-4 px-10 rounded-full text-lg shadow-button button-hover flex items-center justify-center mx-auto">
+                <i class="fa fa-heart mr-2"></i> 进入教室
+            </button>
+            
+            <div class="absolute bottom-8 left-0 right-0 text-center">
+                <p class="text-neutral-200 text-sm">按任意键或点击进入</p>
+                <div class="mt-2 flex justify-center space-x-2">
+                    <span class="w-2 h-2 bg-primary rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+                    <span class="w-2 h-2 bg-secondary rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+                    <span class="w-2 h-2 bg-accent rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主菜单页面 -->
+    <div id="mainMenuPage" class="relative w-full h-screen hidden">
+        <div class="absolute inset-0 z-0">
+            <!-- 动漫教室主背景 - 二次元风格 -->
+            <img id="mainMenuBackground" src="https://picsum.photos/id/237/1920/1080" alt="动漫教室主背景" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-b from-neutral-900/30 to-neutral-900/80"></div>
+        </div>
+        
+        <!-- 设置按钮 -->
+        <button id="openSettingsBtn" class="absolute top-4 right-4 z-30 bg-neutral-800/60 hover:bg-neutral-700 p-3 rounded-full shadow-button button-hover">
+            <i class="fa fa-cog text-white"></i>
+        </button>
+        
+        <!-- AI美少女教师立绘 - 动漫风格 -->
+        <div class="absolute bottom-0 left-1/3 transform -translate-x-1/2 z-10 w-[35vw] max-w-md character-appear float-effect">
+            <img id="teacherMainMenuImage" src="https://picsum.photos/id/64/400/800" alt="AI美少女教师" class="w-full h-auto object-contain">
+        </div>
+        
+        <!-- 对话框 - 底部半透明风格 -->
+        <div class="absolute bottom-0 left-0 right-0 p-6 z-20 dialog-appear">
+            <div class="bg-neutral-800/80 backdrop-blur rounded-2xl p-6 shadow-dialog max-w-4xl mx-auto border-2 border-primary/30">
+                <div class="flex items-start mb-4">
+                    <div class="w-12 h-12 rounded-full bg-primary flex items-center justify-center mr-3 flex-shrink-0 border-2 border-white/30">
+                        <i class="fa fa-star text-xl text-white"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white flex items-center">
+                        小萌老师 <span class="ml-2 text-sm bg-accent/20 text-accent px-2 py-0.5 rounded-full">数学老师</span>
+                    </h3>
+                </div>
+                <p id="teacherGreeting" class="text-lg text-neutral-100 mb-6 leading-relaxed">
+                    呀！你来啦～ 欢迎回到教室！(≧∇≦)ﾉ 今天想学习什么呢？还是想看看之前的学习报告呀？
+                    对了对了，昨天的作业你做得超棒的哦！
+                </p>
+                
+                <!-- 选项按钮 -->
+                <div class="flex flex-wrap gap-4 justify-center">
+                    <button id="startLearningBtn" class="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-full shadow-button button-hover">
+                        <i class="fa fa-book mr-2"></i> 开始上课
+                    </button>
+                    <button id="viewReportBtn" class="bg-secondary hover:bg-secondary/90 text-white font-bold py-3 px-8 rounded-full shadow-button button-hover">
+                        <i class="fa fa-bar-chart mr-2"></i> 学习报告
+                    </button>
+                    <button id="exitBtn" class="bg-neutral-600 hover:bg-neutral-500 text-white font-bold py-3 px-8 rounded-full shadow-button button-hover">
+                        <i class="fa fa-sign-out mr-2"></i> 下课啦
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 标题 -->
+        <div class="absolute top-8 left-0 right-0 text-center">
+            <h1 class="text-[clamp(1.8rem,5vw,3rem)] font-bold text-shadow-glow text-primary">
+                小萌的奇妙课堂
+            </h1>
+        </div>
+    </div>
+
+    <!-- 课程列表页面 -->
+    <div id="courseListPage" class="relative w-full h-screen hidden">
+        <div class="absolute inset-0 z-0">
+            <!-- 二次元课程列表背景 -->
+            <img id="courseListBackground" src="https://picsum.photos/id/325/1920/1080" alt="课程列表背景" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-neutral-900/60"></div>
+        </div>
+        
+        <!-- 设置按钮 -->
+        <button id="openSettingsBtn2" class="absolute top-4 right-4 z-30 bg-neutral-800/60 hover:bg-neutral-700 p-3 rounded-full shadow-button button-hover">
+            <i class="fa fa-cog text-white"></i>
+        </button>
+        
+        <div class="relative z-10 container mx-auto px-4 py-16">
+            <div class="flex justify-between items-center mb-10">
+                <h2 class="text-[clamp(1.5rem,4vw,2.5rem)] font-bold text-shadow-glow text-primary">
+                    今天要学什么呢？(≧∇≦)ﾉ
+                </h2>
+                <button id="backToMainBtn" class="bg-neutral-700 hover:bg-neutral-600 text-white font-bold py-2 px-6 rounded-full shadow-button button-hover">
+                    <i class="fa fa-arrow-left mr-2"></i> 返回
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- 课程卡片 1 -->
+                <div class="bg-neutral-800/60 backdrop-blur rounded-xl overflow-hidden shadow-card border-2 border-primary/20 transform transition-all duration-300 hover:-translate-y-2 hover:shadow-lg hover:border-primary/50 cursor-pointer course-card" data-course="1">
+                    <div class="h-48 overflow-hidden relative">
+                        <img class="course-image" data-course="1" src="https://picsum.photos/id/342/600/400" alt="数学基础" class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                        <div class="absolute top-3 left-3 bg-primary/80 text-white text-sm px-3 py-1 rounded-full">
+                            小萌老师的课
+                        </div>
+                    </div>
+                    <div class="p-5">
+                        <h3 class="text-xl font-bold mb-2 text-white">数学基础 - 可爱的数字们</h3>
+                        <p class="text-neutral-200 mb-4">和数字们做好朋友吧～ 轻松学习基础概念！(๑•̀ㅂ•́)و✧</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm bg-primary/20 text-primary px-3 py-1 rounded-full">难度：超简单</span>
+                            <span class="text-sm text-neutral-300"><i class="fa fa-clock-o mr-1"></i> 30分钟</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 课程卡片 2 -->
+                <div class="bg-neutral-800/60 backdrop-blur rounded-xl overflow-hidden shadow-card border-2 border-secondary/20 transform transition-all duration-300 hover:-translate-y-2 hover:shadow-lg hover:border-secondary/50 cursor-pointer course-card" data-course="2">
+                    <div class="h-48 overflow-hidden relative">
+                        <img class="course-image" data-course="2" src="https://picsum.photos/id/349/600/400" alt="科学探索" class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                        <div class="absolute top-3 left-3 bg-secondary/80 text-white text-sm px-3 py-1 rounded-full">
+                            小葵老师的课
+                        </div>
+                    </div>
+                    <div class="p-5">
+                        <h3 class="text-xl font-bold mb-2 text-white">科学探索 - 彩虹的秘密</h3>
+                        <p class="text-neutral-200 mb-4">为什么天空会有彩虹呢？一起来探索吧！(≧ω≦)</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm bg-secondary/20 text-secondary px-3 py-1 rounded-full">难度：有点趣</span>
+                            <span class="text-sm text-neutral-300"><i class="fa fa-clock-o mr-1"></i> 45分钟</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 课程卡片 3 -->
+                <div class="bg-neutral-800/60 backdrop-blur rounded-xl overflow-hidden shadow-card border-2 border-accent/20 transform transition-all duration-300 hover:-translate-y-2 hover:shadow-lg hover:border-accent/50 cursor-pointer course-card" data-course="3">
+                    <div class="h-48 overflow-hidden relative">
+                        <img class="course-image" data-course="3" src="https://picsum.photos/id/361/600/400" alt="历史文化" class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                        <div class="absolute top-3 left-3 bg-accent/80 text-neutral-800 text-sm px-3 py-1 rounded-full">
+                            小枫老师的课
+                        </div>
+                    </div>
+                    <div class="p-5">
+                        <h3 class="text-xl font-bold mb-2 text-white">历史文化 - 古代小秘密</h3>
+                        <p class="text-neutral-200 mb-4">穿越时空！看看古人是怎么生活的～ (｡･ω･｡)</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm bg-accent/20 text-accent px-3 py-1 rounded-full">难度：有点酷</span>
+                            <span class="text-sm text-neutral-300"><i class="fa fa-clock-o mr-1"></i> 60分钟</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 课堂对话页面 -->
+    <div id="classroomPage" class="relative w-full h-screen hidden overflow-hidden">
+        <div class="absolute inset-0 z-0">
+            <!-- 二次元动漫教室背景 -->
+            <img id="classroomBackground" src="https://picsum.photos/id/433/1920/1080" alt="动漫教室背景" class="w-full h-full object-cover">
+        </div>
+        
+        <!-- 设置按钮 -->
+        <button id="openSettingsBtn3" class="absolute top-4 right-4 z-30 bg-neutral-800/60 hover:bg-neutral-700 p-3 rounded-full shadow-button button-hover">
+            <i class="fa fa-cog text-white"></i>
+        </button>
+        
+        <!-- AI美少女教师立绘 - 二次元风格 -->
+        <div id="teacherCharacter" class="absolute bottom-0 left-1/3 transform -translate-x-1/2 z-10 w-[35vw] max-w-md float-effect">
+            <img id="teacherImage" src="https://picsum.photos/id/64/400/800" alt="AI美少女教师" class="w-full h-auto object-contain character-appear">
+        </div>
+        
+        <!-- 对话框 -->
+        <div id="dialogBox" class="absolute bottom-0 left-0 right-0 p-6 z-20">
+            <div class="bg-neutral-800/85 backdrop-blur rounded-2xl p-6 shadow-dialog max-w-5xl mx-auto border-2 border-primary/30 dialog-appear">
+                <div class="flex items-start mb-4">
+                    <div id="speakerAvatar" class="w-12 h-12 rounded-full bg-primary flex items-center justify-center mr-3 flex-shrink-0 border-2 border-white/30">
+                        <i class="fa fa-star text-xl text-white"></i>
+                    </div>
+                    <h3 id="speakerName" class="text-2xl font-bold text-white flex items-center">
+                        小萌老师 <span class="ml-2 text-sm bg-accent/20 text-accent px-2 py-0.5 rounded-full">数学老师</span>
+                    </h3>
+                </div>
+                <p id="dialogText" class="text-lg text-neutral-100 mb-6 leading-relaxed">
+                    欢迎来到数学基础课哦～ 今天我们要认识一些可爱的数字朋友！(≧∇≦)ﾉ 你准备好了吗？还是想先聊聊天呀？
+                </p>
+                
+                <!-- 对话选项/输入区域 -->
+                <div id="dialogOptions" class="flex flex-wrap gap-4 justify-center">
+                    <button class="dialog-option bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-full shadow-button button-hover">
+                        准备好啦！开始吧～
+                    </button>
+                    <button class="dialog-option bg-neutral-700 hover:bg-neutral-600 text-white font-bold py-3 px-8 rounded-full shadow-button button-hover">
+                        先聊聊吧～ 小萌老师今天好可爱呀！
+                    </button>
+                </div>
+                
+                <!-- 回答输入区 (默认隐藏) -->
+                <div id="answerInputArea" class="hidden">
+                    <textarea id="studentAnswer" class="w-full bg-neutral-700/50 border-2 border-primary/30 rounded-lg p-4 text-neutral-100 mb-4 focus:outline-none focus:ring-2 focus:ring-primary" rows="3" placeholder="请输入你的回答..."></textarea>
+                    <div class="flex justify-end gap-3">
+                        <button id="cancelAnswerBtn" class="bg-neutral-600 hover:bg-neutral-500 text-white font-bold py-2 px-6 rounded-full shadow-button button-hover">
+                            取消
+                        </button>
+                        <button id="submitAnswerBtn" class="bg-primary hover:bg-primary/90 text-white font-bold py-2 px-6 rounded-full shadow-button button-hover">
+                            提交答案 <i class="fa fa-heart ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 作业区域 (默认隐藏) -->
+                <div id="homeworkArea" class="hidden">
+                    <div class="bg-neutral-700/30 rounded-lg p-4 mb-4 border border-primary/20">
+                        <h4 class="font-bold text-white mb-2">课后小作业 <span class="text-sm text-primary">(≧∇≦)ﾉ</span></h4>
+                        <p id="homeworkContent" class="text-neutral-100 mb-2">请解决以下问题：...</p>
+                    </div>
+                    <textarea id="homeworkAnswer" class="w-full bg-neutral-700/50 border-2 border-primary/30 rounded-lg p-4 text-neutral-100 mb-4 focus:outline-none focus:ring-2 focus:ring-primary" rows="4" placeholder="请输入你的作业答案..."></textarea>
+                    <div class="flex justify-end gap-3">
+                        <button id="cancelHomeworkBtn" class="bg-neutral-600 hover:bg-neutral-500 text-white font-bold py-2 px-6 rounded-full shadow-button button-hover">
+                            稍后完成
+                        </button>
+                        <button id="submitHomeworkBtn" class="bg-secondary hover:bg-secondary/90 text-white font-bold py-2 px-6 rounded-full shadow-button button-hover">
+                            提交作业 <i class="fa fa-star ml-1"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 导航按钮 -->
+                <div class="flex justify-between mt-4">
+                    <button id="backToCourseListBtn" class="bg-neutral-700/70 hover:bg-neutral-600 text-white font-bold py-2 px-4 rounded-full shadow-button button-hover text-sm">
+                        <i class="fa fa-arrow-left mr-1"></i> 返回课程
+                    </button>
+                    <button id="nextDialogBtn" class="bg-primary/80 hover:bg-primary text-white font-bold py-2 px-6 rounded-full shadow-button button-hover hidden">
+                        继续 <i class="fa fa-arrow-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 课程标题 -->
+        <div class="absolute top-4 left-0 right-0 text-center z-10">
+            <h2 id="currentCourseTitle" class="text-[clamp(1.2rem,3vw,1.8rem)] font-bold bg-neutral-900/60 backdrop-blur px-4 py-2 rounded-full inline-block text-shadow-sm text-white border border-primary/30">
+                数学基础 - 可爱的数字们
+            </h2>
+        </div>
+    </div>
+
+    <!-- 学习报告页面 -->
+    <div id="reportPage" class="relative w-full h-screen hidden">
+        <div class="absolute inset-0 z-0">
+            <!-- 二次元报告背景 -->
+            <img id="reportBackground" src="https://picsum.photos/id/452/1920/1080" alt="报告背景" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-neutral-900/70"></div>
+        </div>
+        
+        <!-- 设置按钮 -->
+        <button id="openSettingsBtn4" class="absolute top-4 right-4 z-30 bg-neutral-800/60 hover:bg-neutral-700 p-3 rounded-full shadow-button button-hover">
+            <i class="fa fa-cog text-white"></i>
+        </button>
+        
+        <div class="relative z-10 container mx-auto px-4 py-12">
+            <div class="flex justify-between items-center mb-10">
+                <h2 class="text-[clamp(1.5rem,4vw,2.5rem)] font-bold text-shadow-glow text-primary">
+                    你的学习小报告～ (≧∇≦)ﾉ
+                </h2>
+                <button id="backFromReportBtn" class="bg-neutral-700 hover:bg-neutral-600 text-white font-bold py-2 px-6 rounded-full shadow-button button-hover">
+                    <i class="fa fa-arrow-left mr-2"></i> 返回
+                </button>
+            </div>
+            
+            <div class="bg-neutral-800/60 backdrop-blur rounded-xl p-6 shadow-card border-2 border-primary/20 mb-8">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                    <div>
+                        <h3 class="text-2xl font-bold text-white mb-1">学习总览</h3>
+                        <p class="text-neutral-400">最后更新：今天 15:45</p>
+                    </div>
+                    <div class="mt-4 md:mt-0 bg-primary/20 rounded-full px-4 py-2">
+                        <span class="text-primary font-bold">总体进度：75% 真棒！</span>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-neutral-700/40 rounded-lg p-4 border border-primary/20 transform transition-all duration-300 hover:border-primary/50">
+                        <div class="text-neutral-300 mb-1">已完成课程</div>
+                        <div class="text-3xl font-bold text-white">3/5 <span class="text-sm text-primary">加油！</span></div>
+                    </div>
+                    <div class="bg-neutral-700/40 rounded-lg p-4 border border-primary/20 transform transition-all duration-300 hover:border-primary/50">
+                        <div class="text-neutral-300 mb-1">平均得分</div>
+                        <div class="text-3xl font-bold text-white">92分 <span class="text-sm text-accent">超棒！</span></div>
+                    </div>
+                    <div class="bg-neutral-700/40 rounded-lg p-4 border border-primary/20 transform transition-all duration-300 hover:border-primary/50">
+                        <div class="text-neutral-300 mb-1">学习时长</div>
+                        <div class="text-3xl font-bold text-white">3小时 <span class="text-sm text-secondary">辛苦了～</span></div>
+                    </div>
+                </div>
+                
+                <!-- 进度条 -->
+                <div class="mb-2 flex justify-between">
+                    <span class="text-neutral-200">课程完成进度</span>
+                    <span class="text-neutral-200">75% <i class="fa fa-star text-accent"></i></span>
+                </div>
+                <div class="w-full bg-neutral-700 rounded-full h-3 mb-6 border border-primary/30">
+                    <div class="bg-gradient-to-r from-primary to-secondary h-3 rounded-full" style="width: 75%"></div>
+                </div>
+            </div>
+            
+            <!-- 课程详情 -->
+            <div class="bg-neutral-800/60 backdrop-blur rounded-xl p-6 shadow-card border-2 border-primary/20">
+                <h3 class="text-2xl font-bold text-white mb-6">课程详情 <span class="text-sm text-primary">小萌老师给你点赞哦～</span></h3>
+                
+                <div class="space-y-4">
+                    <!-- 课程1详情 -->
+                    <div class="bg-neutral-700/30 rounded-lg p-4 border border-primary/20 transform transition-all duration-200 hover:bg-neutral-700/40 hover:border-primary/40">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-bold text-white">数学基础 - 可爱的数字们</h4>
+                            <span class="bg-green-500/20 text-green-400 text-sm px-3 py-1 rounded-full">已完成</span>
+                        </div>
+                        <div class="flex flex-wrap gap-4 text-sm text-neutral-200">
+                            <div><i class="fa fa-check-circle text-green-400 mr-1"></i> 测验得分：95分 <span class="text-xs text-green-400">太厉害啦！</span></div>
+                            <div><i class="fa fa-pencil text-blue-400 mr-1"></i> 作业得分：90分 <span class="text-xs text-blue-400">很棒哦～</span></div>
+                            <div><i class="fa fa-clock-o text-yellow-400 mr-1"></i> 学习时长：35分钟</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 课程2详情 -->
+                    <div class="bg-neutral-700/30 rounded-lg p-4 border border-secondary/20 transform transition-all duration-200 hover:bg-neutral-700/40 hover:border-secondary/40">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-bold text-white">科学探索 - 彩虹的秘密</h4>
+                            <span class="bg-green-500/20 text-green-400 text-sm px-3 py-1 rounded-full">已完成</span>
+                        </div>
+                        <div class="flex flex-wrap gap-4 text-sm text-neutral-200">
+                            <div><i class="fa fa-check-circle text-green-400 mr-1"></i> 测验得分：88分 <span class="text-xs text-green-400">继续加油！</span></div>
+                            <div><i class="fa fa-pencil text-blue-400 mr-1"></i> 作业得分：92分 <span class="text-xs text-blue-400">超棒！</span></div>
+                            <div><i class="fa fa-clock-o text-yellow-400 mr-1"></i> 学习时长：50分钟</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 课程3详情 -->
+                    <div class="bg-neutral-700/30 rounded-lg p-4 border border-accent/20 transform transition-all duration-200 hover:bg-neutral-700/40 hover:border-accent/40">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-bold text-white">历史文化 - 古代小秘密</h4>
+                            <span class="bg-yellow-500/20 text-yellow-400 text-sm px-3 py-1 rounded-full">进行中</span>
+                        </div>
+                        <div class="flex flex-wrap gap-4 text-sm text-neutral-200">
+                            <div><i class="fa fa-spinner text-yellow-400 mr-1"></i> 完成进度：60% <span class="text-xs text-yellow-400">快完成啦！</span></div>
+                            <div><i class="fa fa-clock-o text-yellow-400 mr-1"></i> 已学习：45分钟</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 存储默认图片URL
+        const defaultImages = {
+            entryBackground: "https://picsum.photos/id/175/1920/1080",
+            mainMenuBackground: "https://picsum.photos/id/237/1920/1080",
+            teacherMain: "https://picsum.photos/id/64/400/800",
+            teacherKui: "https://picsum.photos/id/65/400/800",
+            teacherFeng: "https://picsum.photos/id/91/400/800",
+            courseListBackground: "https://picsum.photos/id/325/1920/1080",
+            mathBackground: "https://picsum.photos/id/433/1920/1080",
+            scienceBackground: "https://picsum.photos/id/431/1920/1080",
+            historyBackground: "https://picsum.photos/id/437/1920/1080",
+            reportBackground: "https://picsum.photos/id/452/1920/1080",
+            course1Image: "https://picsum.photos/id/342/600/400",
+            course2Image: "https://picsum.photos/id/349/600/400",
+            course3Image: "https://picsum.photos/id/361/600/400"
+        };
+        
+        // 页面元素引用
+        const entryPage = document.getElementById('entryPage');
+        const mainMenuPage = document.getElementById('mainMenuPage');
+        const courseListPage = document.getElementById('courseListPage');
+        const classroomPage = document.getElementById('classroomPage');
+        const reportPage = document.getElementById('reportPage');
+        const settingsModal = document.getElementById('settingsModal');
+        
+        // 音频元素
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const buttonSound = document.getElementById('buttonSound');
+        const dialogSound = document.getElementById('dialogSound');
+        
+        // 按钮引用
+        const enterClassroomBtn = document.getElementById('enterClassroomBtn');
+        const startLearningBtn = document.getElementById('startLearningBtn');
+        const viewReportBtn = document.getElementById('viewReportBtn');
+        const exitBtn = document.getElementById('exitBtn');
+        const backToMainBtn = document.getElementById('backToMainBtn');
+        const backFromReportBtn = document.getElementById('backFromReportBtn');
+        const backToCourseListBtn = document.getElementById('backToCourseListBtn');
+        const courseCards = document.querySelectorAll('.course-card');
+        const dialogOptions = document.querySelectorAll('.dialog-option');
+        const nextDialogBtn = document.getElementById('nextDialogBtn');
+        const answerInputArea = document.getElementById('answerInputArea');
+        const studentAnswer = document.getElementById('studentAnswer');
+        const cancelAnswerBtn = document.getElementById('cancelAnswerBtn');
+        const submitAnswerBtn = document.getElementById('submitAnswerBtn');
+        const homeworkArea = document.getElementById('homeworkArea');
+        const homeworkContent = document.getElementById('homeworkContent');
+        const homeworkAnswer = document.getElementById('homeworkAnswer');
+        const cancelHomeworkBtn = document.getElementById('cancelHomeworkBtn');
+        const submitHomeworkBtn = document.getElementById('submitHomeworkBtn');
+        
+        // 设置相关按钮
+        const openSettingsBtn = document.getElementById('openSettingsBtn');
+        const openSettingsBtn2 = document.getElementById('openSettingsBtn2');
+        const openSettingsBtn3 = document.getElementById('openSettingsBtn3');
+        const openSettingsBtn4 = document.getElementById('openSettingsBtn4');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        const resetImageBtns = document.querySelectorAll('.reset-image');
+        
+        // 对话元素
+        const dialogText = document.getElementById('dialogText');
+        const speakerName = document.getElementById('speakerName');
+        const currentCourseTitle = document.getElementById('currentCourseTitle');
+        const speakerAvatar = document.getElementById('speakerAvatar');
+        
+        // 图片上传处理函数
+        function handleImageUpload(inputId, previewId, targetElementId) {
+            const input = document.getElementById(inputId);
+            const preview = document.getElementById(previewId);
+            
+            input.addEventListener('change', function(e) {
+                if (e.target.files && e.target.files[0]) {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        // 更新预览图
+                        preview.src = e.target.result;
+                        
+                        // 如果指定了目标元素，也更新目标元素
+                        if (targetElementId) {
+                            const target = document.getElementById(targetElementId);
+                            if (target) {
+                                target.src = e.target.result;
+                            }
+                        }
+                        
+                        // 保存到本地存储
+                        localStorage.setItem(targetElementId || inputId.replace('Upload', ''), e.target.result);
+                    }
+                    
+                    reader.readAsDataURL(e.target.files[0]);
+                }
+            });
+        }
+        
+        // 初始化图片上传功能
+        function initImageUploads() {
+            // 进入页面背景
+            handleImageUpload('entryBackgroundUpload', 'entryBackgroundPreview', 'entryBackground');
+            
+            // 主菜单背景
+            handleImageUpload('mainMenuBackgroundUpload', 'mainMenuBackgroundPreview', 'mainMenuBackground');
+            
+            // 小萌老师立绘
+            handleImageUpload('teacherMainUpload', 'teacherMainPreview', 'teacherMainMenuImage');
+            
+            // 小葵老师立绘
+            handleImageUpload('teacherKuiUpload', 'teacherKuiPreview', 'teacherImage');
+            
+            // 小枫老师立绘
+            handleImageUpload('teacherFengUpload', 'teacherFengPreview', 'teacherImage');
+            
+            // 课程列表背景
+            handleImageUpload('courseListBackgroundUpload', 'courseListBackgroundPreview', 'courseListBackground');
+            
+            // 数学课程背景
+            handleImageUpload('mathBackgroundUpload', 'mathBackgroundPreview', 'classroomBackground');
+            
+            // 科学课程背景
+            handleImageUpload('scienceBackgroundUpload', 'scienceBackgroundPreview', 'classroomBackground');
+            
+            // 历史课程背景
+            handleImageUpload('historyBackgroundUpload', 'historyBackgroundPreview', 'classroomBackground');
+            
+            // 报告页面背景
+            handleImageUpload('reportBackgroundUpload', 'reportBackgroundPreview', 'reportBackground');
+        }
+        
+        // 从本地存储加载图片
+        function loadSavedImages() {
+            // 遍历所有默认图片，检查是否有保存的自定义图片
+            Object.keys(defaultImages).forEach(key => {
+                const savedImage = localStorage.getItem(key);
+                if (savedImage) {
+                    // 更新预览图
+                    const preview = document.getElementById(`${key}Preview`);
+                    if (preview) {
+                        preview.src = savedImage;
+                    }
+                    
+                    // 更新实际显示的图片
+                    let targetId;
+                    switch(key) {
+                        case 'teacherMain':
+                            targetId = 'teacherMainMenuImage';
+                            break;
+                        case 'teacherKui':
+                        case 'teacherFeng':
+                            targetId = 'teacherImage';
+                            break;
+                        case 'mathBackground':
+                        case 'scienceBackground':
+                        case 'historyBackground':
+                            targetId = 'classroomBackground';
+                            break;
+                        case 'course1Image':
+                        case 'course2Image':
+                        case 'course3Image':
+                            const courseNum = key.replace('course', '').replace('Image', '');
+                            const courseImg = document.querySelector(`.course-image[data-course="${courseNum}"]`);
+                            if (courseImg) courseImg.src = savedImage;
+                            break;
+                        default:
+                            targetId = key;
+                    }
+                    
+                    const target = document.getElementById(targetId);
+                    if (target) {
+                        target.src = savedImage;
+                    }
+                }
+            });
+        }
+        
+        // 恢复默认图片
+        function resetToDefaultImage(targetKey) {
+            // 获取默认图片URL
+            const defaultUrl = defaultImages[targetKey];
+            
+            // 更新预览图
+            const preview = document.getElementById(`${targetKey}Preview`);
+            if (preview) {
+                preview.src = defaultUrl;
+            }
+            
+            // 更新实际显示的图片
+            let targetId;
+            switch(targetKey) {
+                case 'teacherMain':
+                    targetId = 'teacherMainMenuImage';
+                    break;
+                case 'teacherKui':
+                case 'teacherFeng':
+                    targetId = 'teacherImage';
+                    break;
+                case 'mathBackground':
+                case 'scienceBackground':
+                case 'historyBackground':
+                    targetId = 'classroomBackground';
+                    break;
+                case 'course1Image':
+                case 'course2Image':
+                case 'course3Image':
+                    const courseNum = targetKey.replace('course', '').replace('Image', '');
+                    const courseImg = document.querySelector(`.course-image[data-course="${courseNum}"]`);
+                    if (courseImg) courseImg.src = defaultUrl;
+                    break;
+                default:
+                    targetId = targetKey;
+            }
+            
+            const target = document.getElementById(targetId);
+            if (target) {
+                target.src = defaultUrl;
+            }
+            
+            // 从本地存储移除
+            localStorage.removeItem(targetKey);
+        }
+        
+        // 播放对话音效
+        function playDialogSound() {
+            // 实际使用时需要提供对话音效URL
+            // dialogSound.src = "dialog-sound.mp3";
+            // dialogSound.play().catch(e => console.log("对话音效播放失败:", e));
+        }
+        
+        // 页面导航功能
+        function showPage(page) {
+            // 隐藏所有页面
+            entryPage.classList.add('hidden');
+            mainMenuPage.classList.add('hidden');
+            courseListPage.classList.add('hidden');
+            classroomPage.classList.add('hidden');
+            reportPage.classList.add('hidden');
+            
+            // 显示目标页面
+            page.classList.remove('hidden');
+            
+            // 播放按钮音效
+            playButtonSound();
+        }
+        
+        // 音频控制函数
+        function playBackgroundMusic() {
+            // 实际使用时需要提供动漫风格的背景音乐URL
+            // backgroundMusic.src = "anime-background-music.mp3";
+            // backgroundMusic.play().catch(e => console.log("背景音乐播放失败:", e));
+        }
+        
+        function playButtonSound() {
+            // 实际使用时需要提供按钮音效URL
+            // buttonSound.src = "anime-button-click.mp3";
+            // buttonSound.play().catch(e => console.log("按钮音效播放失败:", e));
+        }
+        
+        // 课程数据 - 增加知识点讲述，减少问答次数
+        const courses = {
+            1: {
+                title: "数学基础 - 可爱的数字们",
+                teacherName: "小萌老师",
+                teacherTitle: "数学老师",
+                teacherAvatar: '<i class="fa fa-star text-xl text-white"></i>',
+                teacherColor: "bg-primary",
+                background: localStorage.getItem('mathBackground') || "https://picsum.photos/id/433/1920/1080",
+                teacherImage: localStorage.getItem('teacherMain') || "https://picsum.photos/id/64/400/800", // 动漫美少女立绘
+                dialogs: [
+                    "欢迎来到数学基础课哦～ 今天我们要认识一些可爱的数字朋友！(≧∇≦)ﾉ 你准备好了吗？还是想先聊聊天呀？",
+                    "太好了！那我们就开始吧～ 首先呢，要认识最基础的自然数宝宝们～ 自然数就是从1开始的数字：1、2、3、4... 它们就像排队的小朋友一样，一个接一个～",
+                    "自然数在我们生活中无处不在哦～ 比如你有3个苹果，班上有25位同学，这些都是自然数在帮忙计数呢～ 是不是很有用呀？",
+                    "接下来呢，我们要认识自然数的大哥哥——整数！整数家族可比自然数家族热闹多啦～ 它们包括正整数、负整数和零哦～ 比如... -3, -2, -1, 0, 1, 2, 3...",
+                    "你能举个生活中用到负数的例子吗？(*^▽^*) 想想看哦～", // 互动问答1
+                    "哇！这个例子超棒的～ 没错，温度、电梯楼层都会用到负数呢！零也是个很特别的数字，它表示什么都没有，但又非常重要～",
+                    "有了这些数字朋友，我们就可以进行各种运算啦～ 比如加法就是把数字们合在一起，减法就是把它们分开～ 就像把苹果分给小朋友一样～",
+                    "我们来做个小练习吧～ 如果你有5块糖果，妈妈又给了你3块，现在你有几块呢？(๑•̀ㅂ•́)و✧", // 互动问答2
+                    "答对啦！5加3等于8～ 你真聪明！数字之间的运算是不是很有趣？就像在玩数字游戏一样～",
+                    "今天我们认识了自然数和整数，还学习了简单的加减法～ 大家都表现得超棒的！(≧ω≦) 下面是课后小作业，完成后就可以和数字们成为更好的朋友啦～"
+                ]
+            },
+            2: {
+                title: "科学探索 - 彩虹的秘密",
+                teacherName: "小葵老师",
+                teacherTitle: "科学老师",
+                teacherAvatar: '<i class="fa fa-flask text-xl text-white"></i>',
+                teacherColor: "bg-secondary",
+                background: localStorage.getItem('scienceBackground') || "https://picsum.photos/id/431/1920/1080",
+                teacherImage: localStorage.getItem('teacherKui') || "https://picsum.photos/id/65/400/800", // 动漫美少女立绘
+                dialogs: [
+                    "嗨～ 欢迎来到科学探索课！我是小葵老师～ (≧∇≦)ﾉ 今天我们要探索彩虹的秘密哦！你见过彩虹吗？觉得它漂亮吗？",
+                    "彩虹真的超美的！像天空中挂了一条彩色的项链～ 其实彩虹是阳光和水滴一起变的魔术哦～ 当阳光遇到空气中的小水滴，就会发生折射和反射～",
+                    "阳光看起来是白色的，但其实它是由很多种颜色组成的呢～ 就像我们看到的彩虹有红、橙、黄、绿、蓝、靛、紫七种颜色～ 是不是很神奇？",
+                    "这些颜色的光波长不一样，所以通过水滴时会分开来，形成我们看到的彩虹～ 而且彩虹总是出现在雨后太阳出来的时候哦～",
+                    "你知道彩虹为什么总是弯弯曲曲的吗？(*^▽^*) 动动脑筋想一想～", // 互动问答1
+                    "答对啦！因为太阳在我们背后时，阳光通过空中的水滴折射，形成一个圆锥形状的光，我们看到的就是这个圆锥的一部分，所以是弯曲的～",
+                    "除了彩虹，还有很多光的魔术哦～ 比如肥皂泡上的彩色条纹，也是光的干涉造成的～ 还有日出日落时天空会变成橙色或红色，那是因为阳光穿过了更多的大气层～",
+                    "我们来做个小实验吧～ 你可以用一个三棱镜，或者在阳光下喷水雾，看看能不能制造出小彩虹呢？试试看，然后告诉我你看到了什么颜色～", // 互动问答2
+                    "太棒了！你成功做出彩虹了对不对？科学是不是很有趣呀？通过简单的实验，我们就能看到光的神奇魔法～",
+                    "今天的探索就到这里啦～ 希望你以后看到彩虹时，能想起我们今天学到的知识哦～ (≧ω≦) 下面是小作业，完成后你就是小小的科学家啦～"
+                ]
+            },
+            3: {
+                title: "历史文化 - 古代小秘密",
+                teacherName: "小枫老师",
+                teacherTitle: "历史老师",
+                teacherAvatar: '<i class="fa fa-book text-xl text-white"></i>',
+                teacherColor: "bg-accent",
+                teacherImage: localStorage.getItem('teacherFeng') || "https://picsum.photos/id/91/400/800", // 动漫美少女立绘
+                background: localStorage.getItem('historyBackground') || "https://picsum.photos/id/437/1920/1080",
+                dialogs: [
+                    "嗨～ 我是小枫老师～ 欢迎来到历史文化课堂！(≧∇≦)ﾉ 今天我们要穿越时空，去看看古埃及的秘密哦～ 你听说过古埃及吗？",
+                    "古埃及是一个非常古老的文明，大约在5000多年前就存在了～ 它位于非洲东北部的尼罗河流域～ 尼罗河就像一条生命之河，养育了古埃及人～",
+                    "古埃及人非常聪明，他们发明了文字、历法，还建造了很多宏伟的建筑～ 最著名的就是金字塔啦～ 你知道最大的金字塔叫什么名字吗？", // 互动问答1
+                    "对啦！就是胡夫金字塔～ 它有146米高，相当于40多层的大楼呢～ 而且是用200多万块巨石建成的，每块石头都有好几吨重～ 是不是很厉害？",
+                    "金字塔是古埃及国王（法老）的陵墓～ 古埃及人相信人死后会到另一个世界去，所以要把陵墓建得非常坚固豪华～ 他们还会把法老的尸体做成木乃伊保存起来～",
+                    "古埃及人还有很多有趣的发明～ 比如他们发明了象形文字，就像画画一样～ 他们还会制作纸莎草纸来写字，比我们现在用的纸要早几千年呢～",
+                    "除了金字塔，古埃及还有很多神秘的东西，比如狮身人面像、神庙等等～ 你觉得古埃及人最了不起的发明是什么呢？为什么呀？", // 互动问答2
+                    "你的想法很有趣呢！其实古埃及人的很多发明都影响了后来的文明～ 比如他们的数学知识、医学技术，都非常先进～",
+                    "古埃及文明虽然已经消失了，但它留下了很多珍贵的遗产，让我们能了解几千年前人们的生活～ 历史是不是很有趣呀？",
+                    "今天的时空之旅就到这里啦～ 希望你对古埃及有了更多的了解～ (≧ω≦) 下面是小作业，完成后你就是小小的历史学家啦～"
+                ]
+            }
+        };
+        
+        // 当前课程状态
+        let currentCourse = null;
+        let currentDialogIndex = 0;
+        let isQuestionMode = false;
+        let isHomeworkMode = false;
+        
+        // 加载课程
+        function loadCourse(courseId) {
+            currentCourse = courses[courseId];
+            currentDialogIndex = 0;
+            
+            // 更新课程信息
+            currentCourseTitle.textContent = currentCourse.title;
+            document.getElementById('classroomBackground').src = currentCourse.background;
+            document.getElementById('teacherImage').src = currentCourse.teacherImage;
+            
+            // 更新教师信息
+            speakerName.innerHTML = `${currentCourse.teacherName} <span class="ml-2 text-sm bg-accent/20 text-accent px-2 py-0.5 rounded-full">${currentCourse.teacherTitle}</span>`;
+            speakerAvatar.className = `w-12 h-12 rounded-full ${currentCourse.teacherColor} flex items-center justify-center mr-3 flex-shrink-0 border-2 border-white/30`;
+            speakerAvatar.innerHTML = currentCourse.teacherAvatar;
+            
+            // 显示第一个对话
+            updateDialog();
+            
+            // 切换到课堂页面
+            showPage(classroomPage);
+        }
+        
+        // 更新对话内容
+        function updateDialog() {
+            if (currentDialogIndex < currentCourse.dialogs.length) {
+                dialogText.textContent = currentCourse.dialogs[currentDialogIndex];
+                playDialogSound(); // 播放对话音效
+                
+                // 重置对话区域
+                document.getElementById('dialogOptions').classList.add('hidden');
+                answerInputArea.classList.add('hidden');
+                homeworkArea.classList.add('hidden');
+                nextDialogBtn.classList.add('hidden');
+                
+                // 检查是否是第一个对话
+                if (currentDialogIndex === 0) {
+                    // 第一个对话显示选项
+                    document.getElementById('dialogOptions').classList.remove('hidden');
+                }
+                // 根据对话内容判断是否需要提问（每课2-3次）
+                else if (currentCourse.dialogs[currentDialogIndex].includes('吗？') && 
+                         (currentCourse.dialogs[currentDialogIndex].includes('举个例子') ||
+                          currentCourse.dialogs[currentDialogIndex].includes('想想看') ||
+                          currentCourse.dialogs[currentDialogIndex].includes('什么名字') ||
+                          currentCourse.dialogs[currentDialogIndex].includes('试试看'))) {
+                    // 问题模式 - 显示输入框
+                    document.getElementById('dialogOptions').classList.add('hidden');
+                    answerInputArea.classList.remove('hidden');
+                    studentAnswer.value = '';
+                    isQuestionMode = true;
+                } 
+                // 判断是否是作业环节
+                else if (currentCourse.dialogs[currentDialogIndex].includes('课后小作业')) {
+                    // 作业模式 - 显示作业区域
+                    document.getElementById('dialogOptions').classList.add('hidden');
+                    homeworkArea.classList.remove('hidden');
+                    
+                    // 根据课程设置作业内容
+                    if (currentCourse.title.includes('数学')) {
+                        homeworkContent.textContent = "1. 写出10个自然数宝宝和10个整数家族成员～\n2. 计算：(-5) + 12 = ? （提示：可以想象成12个小苹果减去5个～）\n3. 举3个生活中用到负数的可爱例子～";
+                    } else if (currentCourse.title.includes('科学')) {
+                        homeworkContent.textContent = "1. 用自己的话解释彩虹是怎么变出来的～\n2. 试着用一盆水和一面镜子做个彩虹小实验，把结果记下来～\n3. 找3种和光有关的自然现象，告诉它们的小秘密～";
+                    } else if (currentCourse.title.includes('历史')) {
+                        homeworkContent.textContent = "1. 简单说说金字塔是用来做什么的，为什么要建那么高～\n2. 古埃及人有哪些厉害的发明？选一个你觉得最酷的介绍一下～\n3. 如果你能穿越到古埃及，你想做什么？为什么呢？";
+                    }
+                    
+                    homeworkAnswer.value = '';
+                    isHomeworkMode = true;
+                } 
+                // 其他情况显示继续按钮
+                else {
+                    // 普通对话，显示继续按钮
+                    document.getElementById('dialogOptions').classList.add('hidden');
+                    nextDialogBtn.classList.remove('hidden');
+                    isQuestionMode = false;
+                    isHomeworkMode = false;
+                }
+            } else {
+                // 所有对话完成，返回课程列表
+                showPage(courseListPage);
+            }
+        }
+        
+        // 提交答案处理 - 接入AI的地方
+        function submitAnswer() {
+            const answer = studentAnswer.value.trim();
+            
+            if (answer) {
+                // 模拟AI评价 - 更符合动漫风格的鼓励性评价
+                let evaluation = "你的回答很有想法哦～ 真棒！(^▽^) 继续加油呀～";
+                
+                // 根据不同课程和问题定制评价
+                if (currentCourse.title.includes('数学')) {
+                    if (currentDialogIndex === 4) { // 数学课程关于负数例子的问题
+                        evaluation = "这个例子超棒的！(๑•̀ㅂ•́)و✧ 负数在生活中确实有很多用处呢～ 看来你很会观察生活哦～ 老师给你点个赞！";
+                    } else if (currentDialogIndex === 7) { // 数学课程小练习
+                        evaluation = "答对啦！5加3确实等于8～ (≧∇≦)ﾉ 你的计算能力好强呀～ 太厉害啦！";
+                    }
+                } else if (currentCourse.title.includes('科学')) {
+                    if (currentDialogIndex === 4) { // 科学课程关于彩虹弯曲的问题
+                        evaluation = "哇！你太聪明了～ (≧ω≦) 彩虹弯曲确实和光的折射角度有关呢～ 老师真为你骄傲！";
+                    } else if (currentDialogIndex === 7) { // 科学课程小实验
+                        evaluation = "太棒了！你成功做出彩虹了对不对？(๑•̀ㅂ•́)و✧ 那些颜色是不是很美呀？科学真有趣呢～";
+                    }
+                } else if (currentCourse.title.includes('历史')) {
+                    if (currentDialogIndex === 2) { // 历史课程关于最大金字塔的问题
+                        evaluation = "答对啦！就是胡夫金字塔～ (≧∇≦)ﾉ 它真的非常宏伟呢～ 你知道的真多呀！";
+                    } else if (currentDialogIndex === 6) { // 历史课程关于古埃及发明的问题
+                        evaluation = "你的想法很独特哦～ (^▽^) 古埃及人确实很聪明，他们的很多发明都让人惊叹呢～";
+                    }
+                }
+                
+                // 显示AI评价
+                dialogText.textContent = evaluation;
+                document.getElementById('dialogOptions').classList.add('hidden');
+                answerInputArea.classList.add('hidden');
+                nextDialogBtn.classList.remove('hidden');
+                
+                // 记录答案和评价
+                console.log(`学生答案: ${answer}`);
+                console.log(`AI评价: ${evaluation}`);
+            }
+        }
+        
+        // 提交作业处理 - 接入AI的地方
+        function submitHomework() {
+            const homework = homeworkAnswer.value.trim();
+            
+            if (homework) {
+                // 模拟AI批改反馈
+                let feedback = "你的作业老师收到啦～ (≧∇≦)ﾉ 做得很棒哦！老师已经批改完了，成绩会更新在学习报告里～ 继续加油呀！";
+                
+                // 显示反馈
+                dialogText.textContent = feedback;
+                homeworkArea.classList.add('hidden');
+                nextDialogBtn.classList.remove('hidden');
+                
+                // 记录作业
+                console.log(`学生作业: ${homework}`);
+            }
+        }
+        
+        // 事件监听器
+        enterClassroomBtn.addEventListener('click', () => {
+            showPage(mainMenuPage);
+            playBackgroundMusic();
+        });
+        
+        startLearningBtn.addEventListener('click', () => {
+            showPage(courseListPage);
+        });
+        
+        viewReportBtn.addEventListener('click', () => {
+            showPage(reportPage);
+        });
+        
+        exitBtn.addEventListener('click', () => {
+            if (confirm('确定要下课吗？明天也要来上课哦～ (≧ω≦)')) {
+                showPage(entryPage);
+                backgroundMusic.pause();
+            }
+        });
+        
+        backToMainBtn.addEventListener('click', () => {
+            showPage(mainMenuPage);
+        });
+        
+        backFromReportBtn.addEventListener('click', () => {
+            showPage(mainMenuPage);
+        });
+        
+        backToCourseListBtn.addEventListener('click', () => {
+            showPage(courseListPage);
+        });
+        
+        // 课程卡片点击事件
+        courseCards.forEach(card => {
+            card.addEventListener('click', () => {
+                const courseId = card.getAttribute('data-course');
+                loadCourse(courseId);
+            });
+        });
+        
+        // 对话选项点击事件
+        dialogOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                currentDialogIndex++;
+                updateDialog();
+            });
+        });
+        
+        // 下一个对话按钮
+        nextDialogBtn.addEventListener('click', () => {
+            currentDialogIndex++;
+            updateDialog();
+        });
+        
+        // 答案提交相关
+        cancelAnswerBtn.addEventListener('click', () => {
+            answerInputArea.classList.add('hidden');
+            nextDialogBtn.classList.remove('hidden');
+        });
+        
+        submitAnswerBtn.addEventListener('click', submitAnswer);
+        
+        // 作业提交相关
+        cancelHomeworkBtn.addEventListener('click', () => {
+            homeworkArea.classList.add('hidden');
+            nextDialogBtn.classList.remove('hidden');
+        });
+        
+        submitHomeworkBtn.addEventListener('click', submitHomework);
+        
+        // 允许按回车键提交答案
+        studentAnswer.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitAnswer();
+            }
+        });
+        
+        homeworkAnswer.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitHomework();
+            }
+        });
+        
+        // 允许按任意键进入课堂
+        document.addEventListener('keydown', (e) => {
+            if (entryPage.classList.contains('hidden') === false) {
+                showPage(mainMenuPage);
+                playBackgroundMusic();
+            }
+        });
+        
+        // 设置相关事件
+        function openSettings() {
+            settingsModal.classList.remove('hidden');
+            playButtonSound();
+        }
+        
+        function closeSettings() {
+            settingsModal.classList.add('hidden');
+            playButtonSound();
+        }
+        
+        openSettingsBtn.addEventListener('click', openSettings);
+        openSettingsBtn2.addEventListener('click', openSettings);
+        openSettingsBtn3.addEventListener('click', openSettings);
+        openSettingsBtn4.addEventListener('click', openSettings);
+        closeSettingsBtn.addEventListener('click', closeSettings);
+        
+        saveSettingsBtn.addEventListener('click', () => {
+            alert('设置已保存！(≧∇≦)ﾉ');
+            closeSettings();
+            
+            // 重新加载课程数据以应用新图片
+            if (currentCourse) {
+                const courseId = currentCourse.title.includes('数学') ? '1' : 
+                                currentCourse.title.includes('科学') ? '2' : '3';
+                loadCourse(courseId);
+            }
+        });
+        
+        // 恢复默认图片事件
+        resetImageBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const targetKey = this.getAttribute('data-target');
+                resetToDefaultImage(targetKey);
+            });
+        });
+        
+        // 初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            initImageUploads();
+            loadSavedImages();
+        });
+    </script>
 </body>
+</html>
