@@ -1,3 +1,25 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Change image</title>
+</head>
+<body>
+  <img id="photo" src="images/pic1.jpg" alt="photo" width="300">
+  <button id="btn-next">Next</button>
+
+  <script>
+    // run after DOM is ready because script is placed at end of body
+    const images = ['images/pic1.jpg','images/pic2.jpg','images/pic3.jpg'];
+    let i = 0;
+    const img = document.getElementById('photo');
+    document.getElementById('btn-next').addEventListener('click', () => {
+      i = (i + 1) % images.length;
+      img.src = images[i] + '?t=' + Date.now(); // cache-buster
+    });
+  </script>
+</body>
+</html>
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -1083,7 +1105,6 @@
         startLearningBtn.addEventListener('click', () => {
             showPage(courseListPage);
         });
-        
         viewReportBtn.addEventListener('click', () => {
             showPage(reportPage);
         });
