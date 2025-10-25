@@ -1,0 +1,4 @@
+要运行代码需要：
+pip install langchain-openai langchain-core langchain
+用pip install langchain-openai来安装langchain-openai包
+（这个方法可能可以解决导入LLM的问题，要是还是不行，我觉得可能得换一下不用langchain，对langchain确实不太了解，如果有别的调用api的方式应该也可以）
