@@ -10,6 +10,7 @@ PATH_ROOT = Path(__file__).parent
 PATH_STATIC = PATH_ROOT / 'static'
 app = FastAPI(title='AI教师后端API', version='0.0.1', description='这是后端提供的所有API接口，若有未尽之处还请提出。')
 app.mount('/static', StaticFiles(directory=PATH_STATIC), name='static')
+app.mount('/avatar', StaticFiles(directory=PATH_ROOT / 'data' / 'avatar'), name='avatar')
 app.include_router(api.router)
 
 @app.get('/{full_path:path}', summary='前端入口', description='''\
@@ -18,7 +19,9 @@ app.include_router(api.router)
 ''')
 def index(full_path: str):
 	# 处理api路由与static路由
-	if full_path.startswith("api/") or full_path.startswith("static/"):
+	if full_path.startswith("api/") \
+		or full_path.startswith("static/") \
+		or full_path.startswith('avatar/'):
 		raise HTTPException(status_code=404, detail="Not found")
 	
 	# 其他请求返回index.html
@@ -28,5 +31,6 @@ if __name__ == '__main__':
 	uvicorn.run(
 		'app:app',
 		host='127.0.0.1',
-		port=8000
+		port=8000,
+		reload=True
 	)

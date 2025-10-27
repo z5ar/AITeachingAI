@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from enum import Enum
 import utils.ai
 
-router = APIRouter(prefix='/judge', tags=['批改答案API'])
+router = APIRouter(prefix='/problem', tags=['回答问题API'])
 
 class SingleJudgmentRequest(BaseModel):
     problem_id: int
@@ -39,7 +39,7 @@ class SingleJudgmentResponse(BaseModel):
     status: SingleJudgmentStatus
     result: SingleJudgmentScore|None = None
 
-@router.post('/', summary='给回答打分')
+@router.post('/judge', summary='给回答打分')
 def judge(
     reqs: Annotated[
         list[SingleJudgmentRequest],
@@ -90,3 +90,38 @@ def judge(
         ))
     return retl
 
+class GetProblemRequest(BaseModel):
+    problem_id: list[int]
+
+class GetProblemStatus(BaseModel):
+    success = {'code': 0, 'msg': 'Successfully fetched.'}
+
+class ProblemContent(BaseModel):
+    id: int
+    ptype: ProblemType
+    problem: str
+    answer: JsonValue
+
+class GetProblemResponse(BaseModel):
+    status: GetProblemStatus
+    content: list[ProblemContent|None]
+
+@router.get('/get', summary='获取问题')
+def get_problem(req: GetProblemRequest) -> GetProblemResponse:
+    if(isinstance(req.problem_id, int)):
+        req.problem_id = [req.problem_id, ]
+    ret: list[ProblemContent] = list()
+    with Session(dbengine) as sss:
+        for pid in req.problem_id:
+            res = sss.query(Problem)\
+                .filter(Problem.id == pid)\
+                .first()
+            if not res:
+                ret.append(None)
+            else:
+                ret.append(ProblemContent(
+                    id=res.id,
+                    ptype=res.ptype,
+                    problem=res.problem,
+                    answer=res.answer
+                ))
