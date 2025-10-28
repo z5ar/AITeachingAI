@@ -1,7 +1,81 @@
-<!DOCTYPE html>
-<head>
-    <title>Hello, world!</title>
-</head>
-<body>
-    <h1>Hello, world!</h1>
-</body>
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>ATA · 学习 Galgame</title>
+    <!-- Use absolute paths so resources load correctly regardless of current URL -->
+    <link rel="stylesheet" href="/static/style.css" />
+    </head>
+    <body>
+        <div id="app">
+            <header>
+                <h1>ATA · 学习岛</h1>
+                <div id="user-controls">
+                    <div id="user-profile">
+                        <div id="header-avatar" style="width:34px;height:34px;border-radius:50%;overflow:hidden;background:#ddd;margin-right:8px;vertical-align:middle"></div>
+                        <span id="user-status">未登录</span>
+                    </div>
+                    <button id="btn-login">登录</button>
+                    <button id="btn-register">注册</button>
+                    <button id="btn-logout" style="display:none">登出</button>
+                </div>
+                <div id="user-popover" class="hidden"></div>
+            </header>
+
+            <main>
+                <aside id="sidebar">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                        <button id="sidebar-back" style="display:none">← 返回</button>
+                        <h2 id="sidebar-title" style="margin:0">课程</h2>
+                    </div>
+                    <ul id="course-list"></ul>
+                </aside>
+
+                <section id="scene">
+                    <div id="background"></div>
+                    <div id="character">角色</div>
+                    <div id="dialogue">
+                        <div id="dialogue-content">请选择课程 / 小节</div>
+                        <div id="dialogue-controls">
+                            <button id="prev-para" disabled>上一步</button>
+                                <button id="next-para" disabled>下一步</button>
+                            <div class="save-controls" style="display:flex;align-items:center;">
+                                <button id="btn-save-progress" disabled>保存进度</button>
+                                <div id="progress-info" style="margin-left:8px;color:var(--muted)"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- rightpanel removed; sections are shown in the left sidebar and save button moved to dialogue -->
+            </main>
+
+            <!-- 登录/注册模态 -->
+            <div id="modal" class="hidden" style="display:none">
+                <div class="modal-inner">
+                    <h3 id="modal-title">登录</h3>
+                    <div class="modal-row"><label>用户名</label><input id="inp-username" /></div>
+                    <div class="modal-row"><label>密码</label><input id="inp-passwd" type="password" /></div>
+                    <div class="modal-row" id="label-passwd2" style="display:none"><label>确认密码</label><input id="inp-passwd2" type="password" /></div>
+                    <div class="modal-row" id="label-nickname" style="display:none"><label>昵称</label><input id="inp-nickname" maxlength="64" /></div>
+                    <div class="modal-row" id="label-newpasswd" style="display:none"><label>新密码</label><input id="inp-new-passwd" type="password" /></div>
+                    <div class="modal-row" id="label-newpasswd2" style="display:none"><label>确认新密码</label><input id="inp-new-passwd2" type="password" /></div>
+                    <div id="modal-hint" class="muted" style="display:none">
+                        用户名规则：长度 4~32（均含本数，下同），仅字母、数字、下划线，且不能以数字开头。<br/>
+                        密码规则：长度 8~32，且包含 大写、小写、数字、符号 中至少三种。<br/>
+                        昵称规则：长度不超过 64 字符。
+                    </div>
+                    <div class="modal-actions">
+                        <button id="modal-submit" type="button">提交</button>
+                        <button id="modal-cancel" type="button">取消</button>
+                    </div>
+                    <div id="modal-msg" class="muted"></div>
+                </div>
+            </div>
+
+        </div>
+
+    <script src="/static/app.js"></script>
+    </body>
+</html>
