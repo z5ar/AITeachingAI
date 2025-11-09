@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>ATA · 学习 Galgame</title>
+    <title>ATA · 学习岛</title>
     <!-- Use absolute paths so resources load correctly regardless of current URL -->
     <link rel="stylesheet" href="/static/style.css" />
     </head>
@@ -39,10 +39,11 @@
                         <div id="dialogue-content">请选择课程 / 小节</div>
                         <div id="dialogue-controls">
                             <button id="prev-para" disabled>上一步</button>
-                                <button id="next-para" disabled>下一步</button>
-                            <div class="save-controls" style="display:flex;align-items:center;">
-                                <button id="btn-save-progress" disabled>保存进度</button>
-                                <div id="progress-info" style="margin-left:8px;color:var(--muted)"></div>
+                            <button id="next-para" disabled>下一步</button>
+                            <div class="progress-controls" style="display:flex;align-items:center;justify-content:flex-end;width:100%;gap:10px;">
+                                <div id="progress-info" style="color:var(--muted)"></div>
+                                <div id="progress-restore-bar" style="display:none;margin-left:10px;"></div>
+                                <button id="btn-upload-progress">上传进度</button>
                             </div>
                         </div>
                     </div>

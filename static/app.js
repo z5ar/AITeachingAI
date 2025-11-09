@@ -1,3 +1,120 @@
+// ========== 进度与时间本地存储 ========== //
+// 结构: { [sectionId]: { perItemProgress:[], timeSpent:[], lastPara:idx, problemDraft:{}, videoDraft:{} } }
+function getProgressStore(sectionId) {
+  try {
+    const raw = localStorage.getItem('ata_progress_v2')
+    if (!raw) return {}
+    const all = JSON.parse(raw)
+    const uid = currentUserId || 'guest'
+    if (!all[uid]) return {}
+    return all[uid][sectionId] || {}
+  } catch(e) { return {} }
+}
+function setProgressStore(sectionId, obj) {
+  try {
+    const raw = localStorage.getItem('ata_progress_v2')
+    let all = raw ? JSON.parse(raw) : {}
+    const uid = currentUserId || 'guest'
+    if (!all[uid]) all[uid] = {}
+    all[uid][sectionId] = obj
+    localStorage.setItem('ata_progress_v2', JSON.stringify(all))
+  } catch(e){}
+}
+
+// ========== 进度与时间统计 ========== //
+let focusStart = null, focusTimer = null
+let timeSpentArr = [] // 当前section每个item的累计时间
+let perItemProgress = [] // 当前section每个item的进度百分比
+let lastSectionId = null
+let lastPara = 0
+
+function startFocusTimer(idx) {
+  stopFocusTimer()
+  focusStart = Date.now()
+  focusTimer = setInterval(()=>{
+    if (typeof idx === 'number') {
+      timeSpentArr[idx] = (timeSpentArr[idx]||0) + 1
+      saveProgressDraft()
+      updateProgressInfo()
+    }
+  }, 1000)
+}
+function stopFocusTimer() {
+  if (focusTimer) clearInterval(focusTimer)
+  focusTimer = null
+  focusStart = null
+}
+
+function updateProgressInfo() {
+  // 计算平均进度和总时间
+  const avg = perItemProgress.length ? (perItemProgress.reduce((a,b)=>a+b,0)/perItemProgress.length) : 0
+  const total = timeSpentArr.reduce((a,b)=>a+b,0)
+  el('progress-info').textContent = `${Math.round(avg)}% / ${total}s`
+}
+
+function saveProgressDraft() {
+  if (!currentSection) return
+  const sectionId = currentSection.id
+  setProgressStore(sectionId, {
+    perItemProgress,
+    timeSpent: timeSpentArr,
+    lastPara: paraIndex,
+    problemDraft: window.problemDraft || {},
+    videoDraft: window.videoDraft || {}
+  })
+}
+
+function loadProgressDraft(sectionId) {
+  const store = getProgressStore(sectionId)
+  perItemProgress = Array.isArray(store.perItemProgress) ? store.perItemProgress.slice() : []
+  timeSpentArr = Array.isArray(store.timeSpent) ? store.timeSpent.slice() : []
+  lastPara = typeof store.lastPara === 'number' ? store.lastPara : 0
+  window.problemDraft = store.problemDraft || {}
+  window.videoDraft = store.videoDraft || {}
+}
+
+async function uploadProgress() {
+  if (!currentSection) return alert('先选小节')
+  // 检查是否登录
+  const btn = el('btn-upload-progress');
+  if (!currentUsername) {
+    if (btn) {
+      btn.textContent = '登录后上传';
+      btn.disabled = true;
+    }
+    el('progress-info').textContent = '未登录：无法上传';
+    return;
+  } else {
+    if (btn) {
+      btn.textContent = '上传进度';
+      btn.disabled = false;
+    }
+  }
+  // 组装payload
+  const avg = perItemProgress.length ? (perItemProgress.reduce((a,b)=>a+b,0)/perItemProgress.length) : 0
+  const total = timeSpentArr.reduce((a,b)=>a+b,0)
+  const draft = getProgressStore(currentSection.id)
+  const payload = {
+    percentage: Math.round(avg),
+    time_spent: total,
+    completed_at: null,
+    draft: JSON.stringify(draft)
+  }
+  const r = await apiPost(`/lesson/progress/${currentSection.id}/set`, payload)
+  if (r.status && r.status.code===0){
+    el('progress-info').textContent = `已上传 ${Math.round(avg)}% / ${total}s`
+    const btn = el('btn-upload-progress');
+    if (btn) btn.textContent = '上传进度';
+  } else if (r.status && r.status.code===1){
+    el('progress-info').textContent = '未登录：无法上传'
+    const btn = el('btn-upload-progress');
+    if (btn) btn.textContent = '登录后上传';
+  } else {
+    el('progress-info').textContent = '上传失败'
+    const btn = el('btn-upload-progress');
+    if (btn) btn.textContent = '上传进度';
+  }
+}
 const API_BASE = '/api'
 
 // 简单 fetch 包装，包含 cookie
@@ -56,7 +173,14 @@ function applyTheme(accentHex){
   root.style.setProperty('--accent-dark', `rgb(${d.r}, ${d.g}, ${d.b})`)
   // compute readable foreground (black or white) based on perceived brightness
   const brightness = Math.round((rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000)
-  const fg = (brightness > 200) ? '#000' : '#fff'
+  const fg = (()=>{
+    try {
+      return localStorage.getItem('ata_night_mode') === '1'
+    } catch(e) { return false }
+  })()?
+              ((brightness > 180) ? '#333' : '#fff'):
+              ((brightness > 200) ? '#444' : '#fff');
+  
   root.style.setProperty('--accent-foreground', fg)
   // background gradient: two tints of accent
   const top = mixWithWhite(rgb, 0.7)
@@ -73,12 +197,19 @@ function applyTheme(accentHex){
 // public API to change theme at runtime
 window.setThemeColor = applyTheme
 
-// set initial theme to saved or default
-try{
+
+// set initial theme and night mode to saved or default
+try {
+  // 夜间模式优先
+  if (localStorage.getItem('ata_night_mode') === '1') {
+    document.body.classList.add('night-mode')
+  } else {
+    document.body.classList.remove('night-mode')
+  }
   const saved = localStorage.getItem('ata_theme_accent')
   if (saved) applyTheme(saved)
   else applyTheme('#5fb3ff')
-}catch(e){ applyTheme('#5fb3ff') }
+} catch(e) { applyTheme('#5fb3ff') }
 
 // UI helpers
 const el = id => document.getElementById(id)
@@ -101,7 +232,7 @@ async function loadCourses(){
   courses.forEach(c=>{
     const li = document.createElement('li')
     li.textContent = c.name || ('课程 ' + (c.id||'?'))
-    li.style.color = '#222'
+    // 不设置字体色，交由CSS控制
     li.onclick = ()=>selectCourse(c.id)
     list.appendChild(li)
   })
@@ -116,6 +247,8 @@ async function checkAuth(){
       currentUserNickname = r.nickname || null
       currentUsername = r.username || null
       currentUserId = r.user_id || null
+      // 切换用户时自动刷新本地进度缓存
+      // 可选：如需切换用户时清空guest进度，可在此处加逻辑
       // profile fields: avatar and colour
   const avatarPath = r.avatar || null
   currentUserAvatar = avatarPath
@@ -157,6 +290,9 @@ async function checkAuth(){
           if (hex) applyTheme(hex)
         }
       }catch(e){console.warn('applyTheme from profile failed', e)}
+      // 登录后恢复上传按钮
+      const upbtn = el('btn-upload-progress');
+      if (upbtn) { upbtn.textContent = '上传进度'; upbtn.disabled = false; }
       return true
     }
   }catch(e){
@@ -174,8 +310,12 @@ async function checkAuth(){
     // clear header avatar and hide popover when logged out
   try{ const ha = el('header-avatar'); if (ha){ ha.innerHTML = ''; ha.style.display = 'none' } }catch(e){}
   try{ const pop = el('user-popover'); if (pop){ pop.style.display = 'none'; pop.innerHTML = '' } }catch(e){}
+  // 未登录禁用上传按钮
+  const upbtn = el('btn-upload-progress');
+  if (upbtn) { upbtn.textContent = '登录后上传'; upbtn.disabled = true; }
   return false
 }
+
 
 let currentCourse = null, currentSections = [], currentSection = null
 let dialogueItems = [], paraIndex = 0
@@ -186,6 +326,9 @@ let currentUserLastLogin = null
 let currentUserAvatar = null
 // when editing nickname inside popover, lock the popover open to avoid mouseleave closing during IME
 let isEditingNickname = false
+
+// 题目答题状态缓存：{ [paraIndex]: { answer, submitted, result } }
+let problemAnswerCache = {}
 
 async function selectCourse(courseId){
   currentCourse = courseId
@@ -290,20 +433,106 @@ async function selectSection(section){
     // 非 object，视为 text
     return {type: 'text', content: String(it)}
   })
-  paraIndex = 0
-  renderDialogue()
-  // 加载已有进度
-  const p = await apiGet(`/lesson/progress/${section.id}/get`)
-  if (p.status && p.status.code===1){
-    el('progress-info').textContent = '未登录：保存进度功能受限。'
-    el('btn-save-progress').disabled = true
-  } else if (p.progress){
-    el('progress-info').textContent = `已学习 ${p.progress.percentage}%，用时 ${p.progress.time_spent}s`
-    el('btn-save-progress').disabled = false
-  } else {
-    el('progress-info').textContent = '尚无进度记录'
-    el('btn-save-progress').disabled = false
+
+  // 检查本地是否有进度
+  let store = getProgressStore(section.id)
+  let hasProgress = store && (
+    (Array.isArray(store.perItemProgress) && store.perItemProgress.some(x=>x>0)) ||
+    (Array.isArray(store.timeSpent) && store.timeSpent.some(x=>x>0)) ||
+    (store.lastPara && store.lastPara > 0)
+  )
+
+  // 云端进度同步逻辑
+  let cloudProgress = null
+  let cloudUpdatedAt = 0
+  let localUpdatedAt = 0
+  try {
+    const resp = await apiGet(`/lesson/progress/${section.id}/get`)
+    if (resp && resp.status && resp.status.code === 0 && resp.progress) {
+      cloudProgress = resp.progress
+      cloudUpdatedAt = new Date(cloudProgress.updated_at || cloudProgress.completed_at || 0).getTime()
+    }
+  } catch(e) { /* ignore */ }
+  if (store && store.updated_at) {
+    localUpdatedAt = new Date(store.updated_at).getTime()
   }
+  // 若云端有进度，比较时间戳
+  if (cloudProgress && cloudProgress.draft) {
+    let cloudDraft = {}
+    try { cloudDraft = JSON.parse(cloudProgress.draft) } catch(e){}
+    // 兼容多用户本地结构
+    const uid = currentUserId || 'guest'
+    if (cloudUpdatedAt > localUpdatedAt) {
+      // 云端较新，覆盖本地
+      setProgressStore(section.id, { ...cloudDraft, updated_at: cloudProgress.updated_at })
+      store = getProgressStore(section.id)
+      hasProgress = store && (
+        (Array.isArray(store.perItemProgress) && store.perItemProgress.some(x=>x>0)) ||
+        (Array.isArray(store.timeSpent) && store.timeSpent.some(x=>x>0)) ||
+        (store.lastPara && store.lastPara > 0)
+      )
+    } else if (localUpdatedAt > cloudUpdatedAt) {
+      // 本地较新，自动上传本地进度覆盖云端
+      const payload = {
+        percentage: store.perItemProgress && store.perItemProgress.length ? Math.round(store.perItemProgress.reduce((a,b)=>a+b,0)/store.perItemProgress.length) : 0,
+        time_spent: store.timeSpent && store.timeSpent.length ? store.timeSpent.reduce((a,b)=>a+b,0) : 0,
+        completed_at: null,
+        draft: JSON.stringify(store)
+      }
+      await apiPost(`/lesson/progress/${section.id}/set`, payload)
+    }
+  }
+
+  const container = el('dialogue-content')
+  if(hasProgress && container){
+    const stemDiv = document.createElement('div')
+    stemDiv.className = 'problem-stem'
+    const stemText = document.createElement('span')
+    stemText.textContent = ' 检测到有保存的学习记录，请选择：'
+    stemDiv.appendChild(stemText);
+    container.innerHTML = ''
+    container.appendChild(stemDiv)
+    const form = document.createElement('form')
+    form.className = 'problem-form'
+    const btnc = document.createElement('button')
+    btnc.type = 'button'
+    btnc.textContent = '继续学习'
+    btnc.onclick = () => {
+      loadProgressDraft(section.id)
+      if (perItemProgress.length !== dialogueItems.length) perItemProgress = Array(dialogueItems.length).fill(0)
+      if (timeSpentArr.length !== dialogueItems.length) timeSpentArr = Array(dialogueItems.length).fill(0)
+      paraIndex = (typeof lastPara === 'number' && lastPara >= 0 && lastPara < dialogueItems.length) ? lastPara : 0
+      renderDialogue()
+      updateProgressInfo()
+    }
+    form.appendChild(btnc);
+    form.appendChild(document.createElement('br'))
+    const btnr = document.createElement('button')
+    btnr.type = 'button'
+    btnr.textContent = '重新开始'
+    btnr.onclick = () => {
+      // 清除本用户本小节进度
+      setProgressStore(section.id, {})
+      perItemProgress = Array(dialogueItems.length).fill(0)
+      timeSpentArr = Array(dialogueItems.length).fill(0)
+      lastPara = 0
+      window.problemDraft = {}
+      window.videoDraft = {}
+      paraIndex = 0
+      saveProgressDraft()
+      renderDialogue()
+      updateProgressInfo()
+    }
+    form.appendChild(btnr);
+    container.appendChild(form);
+    return;
+  }
+  loadProgressDraft(section.id)
+  if (perItemProgress.length !== dialogueItems.length) perItemProgress = Array(dialogueItems.length).fill(0)
+  if (timeSpentArr.length !== dialogueItems.length) timeSpentArr = Array(dialogueItems.length).fill(0)
+  paraIndex = (typeof lastPara === 'number' && lastPara >= 0 && lastPara < dialogueItems.length) ? lastPara : 0
+  renderDialogue()
+  updateProgressInfo()
 }
 
 function renderDialogue(){
@@ -314,31 +543,126 @@ function renderDialogue(){
     el('next-para').disabled = true
     return
   }
+  // 离开前一个对话时保存进度
+  if (typeof window._lastParaIdx === 'number' && window._lastParaIdx !== paraIndex) {
+    stopFocusTimer();
+    saveProgressDraft();
+  }
+  window._lastParaIdx = paraIndex;
   // render current item based on its type
   const item = dialogueItems[paraIndex]
   renderItem(item, content)
   el('prev-para').disabled = paraIndex===0
   el('next-para').disabled = paraIndex>=dialogueItems.length-1
+  startFocusTimer(paraIndex)
 }
 
 function renderItem(item, container){
+
+// 显示判分结果
+function showJudgeResult(result, container) {
+  const div = document.createElement('div');
+  div.className = 'judge-result';
+  div.style.marginTop = '12px';
+  div.innerHTML = `<b>得分：</b>${result.score} / ${result.mscore}` + (result.comment ? `<br/><b>评语：</b>${result.comment}` : '') + (result.std ? `<br/><b>答案：</b>${result.std}` : '');
+  container.appendChild(div);
+}
+
   // container is DOM element
   if (!item) { container.textContent = '' ; return }
   const t = (item.type || 'text')
   container.innerHTML = ''
   if (t === 'text'){
-    // item.content may be string or other
     const txt = (typeof item.content !== 'undefined') ? item.content : (item.text || '')
     container.textContent = String(txt)
+    // text类型直接100%
+    perItemProgress[paraIndex] = 100;
+    saveProgressDraft();
+    updateProgressInfo();
+  } else if (t === 'interaction') {
+    // interaction类型，content为题干，UI同简答题
+    const stemDiv = document.createElement('div');
+    stemDiv.className = 'problem-stem';
+    const typeTag = document.createElement('span');
+    typeTag.className = 'problem-type-tag';
+    typeTag.textContent = '互动';
+    stemDiv.appendChild(typeTag);
+    const stemText = document.createElement('span');
+    stemText.textContent = ' ' + (item.content || '');
+    stemDiv.appendChild(stemText);
+    container.appendChild(stemDiv);
+    // form结构
+    const form = document.createElement('form');
+    form.className = 'problem-form';
+    const input = document.createElement('textarea');
+    input.rows = 4;
+    input.style.width = '100%';
+    input.placeholder = '请输入答案';
+    // interaction不做本地缓存
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '提交';
+    let submitted = false;
+    btn.onclick = async () => {
+      if (submitted) return;
+      const val = input.value.trim();
+      if (!val) { alert('请输入答案'); return; }
+      btn.disabled = true;
+      btn.textContent = '判分中...';
+      try {
+        const judgeReq = { problem: item.content, answer: val };
+        const res = await apiPost('/problem/judge/interaction', judgeReq);
+        // 适配 InteractionJudgeResponse 格式
+        if (res && res.status && res.score) {
+          const result = {
+            std: res.score.std,
+            score: res.score.score,
+            mscore: 100,
+            comment: res.score.comment
+          };
+          showJudgeResult(result, container);
+          submitted = true;
+          btn.disabled = true;
+          btn.textContent = '已提交';
+          input.disabled = true;
+        } else {
+          btn.disabled = false;
+          btn.textContent = '提交';
+          alert('判分失败');
+        }
+      } catch(e) {
+        console.log(e);
+        btn.disabled = false;
+        btn.textContent = '提交';
+        alert('网络错误');
+      }
+    };
+    // interaction不做输入缓存
+    form.appendChild(input);
+    form.appendChild(document.createElement('br'));
+    form.appendChild(btn);
+    container.appendChild(form);
+    // interaction不做历史结果恢复
   } else if (t === 'video'){
-    // 播放固定示例视频
     const video = document.createElement('video')
     video.controls = true
     video.style.maxWidth = '100%'
-    video.src = '/static/video/example.mp4'
+    video.src = item.content
+    // 恢复播放进度
+    let vDraft = window.videoDraft || {}
+    if (vDraft[paraIndex]) video.currentTime = vDraft[paraIndex]
+    video.addEventListener('timeupdate', ()=>{
+      // 线性分配进度
+      const percent = video.duration ? Math.min(100, Math.round(100 * video.currentTime / video.duration)) : 0;
+      perItemProgress[paraIndex] = percent;
+      // draft保存当前播放进度
+      window.videoDraft = window.videoDraft || {}
+      window.videoDraft[paraIndex] = video.currentTime;
+      saveProgressDraft();
+      updateProgressInfo();
+    });
     container.appendChild(video)
   } else if (t === 'problem'){
-    // problem.content 必须是 number 或 number[]
     let arr = []
     if (typeof item.content === 'number') {
       arr = [item.content]
@@ -352,26 +676,249 @@ function renderItem(item, container){
       container.textContent = '无可用问题';
       return
     }
-    // 随机取一个元素（修正边界，确保 idx ∈ [0, arr.length-1]）
     let idx = 0
     if (arr.length > 1) {
-      // Math.random() ∈ [0,1)，但极小概率浮点误差可能导致 idx==arr.length
       idx = Math.floor(Math.random() * arr.length)
       if (idx >= arr.length) idx = arr.length - 1
     }
     const problemId = arr[idx]
-    // 异步获取问题内容
     container.textContent = '加载中...'
     apiPost('/problem/get', {problem_id: [problemId]}).then(data => {
-      // 这里仅做占位，后续处理问题内容
       if (data && data.content && Array.isArray(data.content) && data.content[0]) {
-        container.textContent = JSON.stringify(data.content[0], null, 2)
+        const prob = data.content[0]
+        if (prob && typeof prob === 'object' && prob.ptype && prob.problem) {
+          // 读取缓存
+          const cache = problemAnswerCache[paraIndex] || {}
+          renderProblemUI(prob, container, problemId, cache)
+        } else {
+          container.textContent = '题目数据异常：' + JSON.stringify(prob)
+        }
       } else {
         container.textContent = '未获取到问题内容'
       }
     }).catch(e => {
+      console.log('getproblem', e)
       container.textContent = '获取问题失败'
     })
+
+// 渲染 problem 题目 UI 并处理提交，支持缓存和恢复答题状态
+function renderProblemUI(prob, container, problemId, cache) {
+  if (!prob || !prob.ptype || !prob.problem) {
+    container.textContent = '题目数据不完整';
+    return;
+  }
+  const ptype = prob.ptype;
+  const stem = prob.problem;
+  const arms = prob.arms || {};
+  // 题型标签
+  const typeMap = {
+    single_choice: '单选',
+    multiple_choice: '多选',
+    variable_choice: '不定项',
+    blank_filling: '填空',
+    brief_response: '简答'
+  };
+  const typeTag = document.createElement('span');
+  typeTag.className = 'problem-type-tag';
+  typeTag.textContent = typeMap[ptype] || '题目';
+  // 构建题干
+  const stemDiv = document.createElement('div');
+  stemDiv.className = 'problem-stem';
+  stemDiv.appendChild(typeTag);
+  const stemText = document.createElement('span');
+  stemText.textContent = ' ' + stem;
+  stemDiv.appendChild(stemText);
+  container.innerHTML = '';
+  container.appendChild(stemDiv);
+
+  // 选择题类型
+  if (["single_choice", "multiple_choice", "variable_choice"].includes(ptype)) {
+    const form = document.createElement('form');
+    form.className = 'problem-form';
+    const keys = Object.keys(arms);
+    if (!keys.length) {
+      container.appendChild(document.createTextNode('无可用选项'));
+      return;
+    }
+    // 恢复已选答案
+    let selected = (cache && Array.isArray(cache.answer)) ? cache.answer : [];
+    // 恢复draft
+    if (window.problemDraft && window.problemDraft[paraIndex]) {
+      const draft = window.problemDraft[paraIndex];
+      if (typeof draft === 'object' && draft !== null && Array.isArray(draft.answer)) {
+        selected = draft.answer;
+      } else if (Array.isArray(draft)) {
+        selected = draft;
+      }
+    }
+    keys.forEach((k, i) => {
+      const label = document.createElement('label');
+      label.textContent = arms[k];
+      label.setAttribute('data-value', k);
+      // 高亮选中项
+      if (selected.includes(k)) label.classList.add('selected');
+      // 选项点击事件
+      label.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (form.querySelector('button[disabled]')) return; // 已提交
+        if (ptype === 'single_choice') {
+          // 单选：只允许一个
+          selected = [k];
+        } else {
+          // 多选/不定项：切换选中
+          if (selected.includes(k)) {
+            selected = selected.filter(x => x !== k);
+          } else {
+            selected = [...selected, k];
+          }
+        }
+        // 更新所有label高亮
+        form.querySelectorAll('label').forEach(lab => {
+          if (selected.includes(lab.getAttribute('data-value'))) lab.classList.add('selected');
+          else lab.classList.remove('selected');
+        });
+  // 实时缓存
+  problemAnswerCache[paraIndex] = { answer: selected.slice(), submitted: false, result: null };
+  // draft保存当前选项
+  window.problemDraft = window.problemDraft || {}
+  window.problemDraft[paraIndex] = { answer: selected.slice() };
+  saveProgressDraft();
+  updateProgressInfo();
+      });
+      form.appendChild(label);
+    });
+    // 提交按钮
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '提交';
+    let submitted = !!(cache && cache.submitted);
+    if (submitted) {
+      btn.disabled = true;
+      btn.textContent = '已提交';
+    }
+    btn.onclick = async () => {
+      if (submitted) return;
+      if (!selected.length) {
+        alert('请选择至少一项');
+        return;
+      }
+      // 缓存答案
+      problemAnswerCache[paraIndex] = { answer: selected.slice(), submitted: false, result: null };
+      btn.disabled = true;
+      btn.textContent = '判分中...';
+      try {
+        const judgeReq = [{problem_id: problemId, answer: selected.slice()}];
+        const res = await apiPost('/problem/judge', judgeReq);
+        if (res && Array.isArray(res) && res[0] && res[0].result) {
+          showJudgeResult(res[0].result, container);
+          submitted = true;
+          btn.disabled = true;
+          btn.textContent = '已提交';
+          problemAnswerCache[paraIndex] = { answer: selected.slice(), submitted: true, result: res[0].result };
+          // 提交后标记为100%
+          perItemProgress[paraIndex] = 100;
+          // draft保存答案和评分结果
+          window.problemDraft = window.problemDraft || {}
+          window.problemDraft[paraIndex] = { answer: selected.slice(), submitted: true, result: res[0].result };
+          saveProgressDraft();
+          updateProgressInfo();
+        } else {
+          btn.disabled = false;
+          btn.textContent = '提交';
+          alert('判分失败');
+        }
+      } catch(e) {
+        btn.disabled = false;
+        btn.textContent = '提交';
+        alert('网络错误');
+      }
+    };
+    form.appendChild(btn);
+    container.appendChild(form);
+    if (submitted && cache && cache.result) {
+      showJudgeResult(cache.result, container);
+    }
+  } else if (["blank_filling", "brief_response"].includes(ptype)) {
+    // 使用与选择题一致的form结构和样式
+    const form = document.createElement('form');
+    form.className = 'problem-form';
+    let input;
+    if (ptype === 'brief_response') {
+      input = document.createElement('textarea');
+      input.rows = 4;
+      input.style.width = '100%';
+      input.placeholder = '请输入答案';
+    } else {
+      input = document.createElement('input');
+      input.type = 'text';
+      input.style.width = '100%';
+      input.placeholder = '请输入答案';
+    }
+    // 恢复输入内容
+    if (cache && typeof cache.answer === 'string') {
+      input.value = cache.answer;
+    }
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '提交';
+    let submitted = !!(cache && cache.submitted);
+    if (submitted) {
+      btn.disabled = true;
+      btn.textContent = '已提交';
+    }
+    btn.onclick = async () => {
+      if (submitted) return;
+      const val = input.value.trim();
+      if (!val) { alert('请输入答案'); return; }
+      // 缓存答案
+      problemAnswerCache[paraIndex] = { answer: val, submitted: false, result: null };
+      btn.disabled = true;
+      btn.textContent = '判分中...';
+      try {
+        const judgeReq = [{problem_id: problemId, answer: val}];
+        const res = await apiPost('/problem/judge', judgeReq);
+        if (res && Array.isArray(res) && res[0] && res[0].result) {
+          showJudgeResult(res[0].result, container);
+          submitted = true;
+          btn.disabled = true;
+          btn.textContent = '已提交';
+          input.disabled = true;
+      // 缓存提交状态和结果
+      problemAnswerCache[paraIndex] = { answer: val, submitted: true, result: res[0].result };
+      // draft保存答案和评分结果
+      window.problemDraft = window.problemDraft || {};
+      window.problemDraft[paraIndex] = { answer: val, submitted: true, result: res[0].result };
+      saveProgressDraft();
+        } else {
+          btn.disabled = false;
+          btn.textContent = '提交';
+          alert('判分失败');
+        }
+      } catch(e) {
+        btn.disabled = false;
+        btn.textContent = '提交';
+        alert('网络错误');
+      }
+    };
+    // 监听输入变化，实时缓存答案（未提交时）
+    input.addEventListener('input', () => {
+      if (!submitted) {
+        problemAnswerCache[paraIndex] = { answer: input.value, submitted: false, result: null };
+      }
+    });
+    form.appendChild(input);
+    form.appendChild(document.createElement('br'));
+    form.appendChild(btn);
+    container.appendChild(form);
+    if (submitted && cache && cache.result) {
+      showJudgeResult(cache.result, container);
+    }
+  } else {
+    container.appendChild(document.createTextNode('未知题型'));
+  }
+}
+
+
   } else {
     // fallback: render JSON
     container.textContent = JSON.stringify(item, null, 2)
@@ -648,8 +1195,8 @@ function bind(){
   const prevBtn = el('prev-para')
   if (nextBtn) nextBtn.addEventListener('click', ()=>{ if (paraIndex<dialogueItems.length-1) paraIndex++, renderDialogue() })
   if (prevBtn) prevBtn.addEventListener('click', ()=>{ if (paraIndex>0) paraIndex--, renderDialogue() })
-  const saveBtn = el('btn-save-progress')
-  if (saveBtn) saveBtn.addEventListener('click', saveProgress)
+  const uploadBtn = el('btn-upload-progress')
+  if (uploadBtn) uploadBtn.addEventListener('click', uploadProgress)
 
   // user popover: show username and user id on hover
   const userStatus = el('user-profile')
@@ -690,7 +1237,7 @@ function bind(){
   }
       const displayNick = nick||uname||'访客'
       pop.innerHTML = `<div style="display:flex;align-items:center;gap:8px">${avHtml}<div class="pop-meta"><div id="pop-nickname-wrap"><strong id="pop-nickname">${displayNick}</strong></div><div class="muted">用户名: ${uname||'-'}</div><div class="muted">用户ID: ${uid||'-'}</div>${lastLoginText?`<div class="muted">上次登录: ${lastLoginText}</div>`:''}</div></div>` +
-        buttonsHtml +
+        `<div class="pop-btn-group">${buttonsHtml}</div>` +
         `<div class="pop-sep"></div>` +
         `<div class="theme-swatches">` +
           `<div class="theme-swatch" title="浅粉" data-color="#ff9bb3" style="background:#ff9bb3"></div>` +
@@ -699,6 +1246,7 @@ function bind(){
           `<div class="theme-swatch" title="浅绿" data-color="#8fe39a" style="background:#8fe39a"></div>` +
           `<div class="theme-swatch" title="浅蓝" data-color="#5fb3ff" style="background:#5fb3ff"></div>` +
           `<div class="theme-swatch" title="浅紫" data-color="#c39bff" style="background:#c39bff"></div>` +
+          `<button id="night-mode-btn" class="theme-swatch" title="夜间模式" style="display:flex;align-items:center;justify-content:center;font-size:1.1em;background:none;border:none;outline:none;cursor:pointer;"></button>` +
         `</div>`
 
       // show pop to measure
@@ -723,7 +1271,7 @@ function bind(){
       pop.style.top = top + 'px'
       pop.style.visibility = 'visible'
 
-      // bind theme swatches: clicking changes theme and highlights selection
+      // 主题色切换和夜间模式按钮
       try{
         const swatches = pop.querySelectorAll('.theme-swatch')
         let currentAccent = ''
@@ -734,14 +1282,18 @@ function bind(){
           '#ff9bb3':'pink', '#ffb36b':'orange', '#ffe28a':'yellow', '#8fe39a':'green', '#5fb3ff':'blue', '#c39bff':'purple'
         }
         swatches.forEach(s => {
+          // 跳过夜间模式按钮
+          if (s.id === 'night-mode-btn') return;
           try{
             const col = (s.dataset.color||'').toLowerCase()
             if (col && currentAccent && col === currentAccent) s.classList.add('selected')
             s.addEventListener('click', async ()=>{
               const c = s.dataset.color
               if (c){
-                // apply theme and mark selected
+                // 仅切换主题色，不影响夜间模式
                 try{ applyTheme(c) }catch(e){ console.warn('applyTheme err', e) }
+                // 若夜间模式已开，切换主题色后仍保持夜间模式class
+                if (isNightMode()) document.body.classList.add('night-mode')
                 swatches.forEach(x=>x.classList.remove('selected'))
                 s.classList.add('selected')
                 // upload profile colour enum to server
@@ -755,7 +1307,50 @@ function bind(){
             })
           }catch(e){console.warn('swatch bind err', e)}
         })
-      }catch(e){console.warn('theme swatch init err', e)}
+        // 夜间模式按钮
+        const nightBtn = pop.querySelector('#night-mode-btn');
+        if (nightBtn) {
+          function updateNightIcon() {
+            nightBtn.innerHTML = isNightMode()
+              // 太阳
+              ? '<svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="5.5" stroke="#FFD600" stroke-width="2.5" fill="#FFD600"/><g stroke="#FFD600" stroke-width="2"><line x1="10" y1="2" x2="10" y2="0.5"/><line x1="10" y1="18" x2="10" y2="19.5"/><line x1="2" y1="10" x2="0.5" y2="10"/><line x1="18" y1="10" x2="19.5" y2="10"/><line x1="15.07" y1="4.93" x2="16.14" y2="3.86"/><line x1="4.93" y1="15.07" x2="3.86" y2="16.14"/><line x1="15.07" y1="15.07" x2="16.14" y2="16.14"/><line x1="4.93" y1="4.93" x2="3.86" y2="3.86"/></g></svg>'
+              // 弯月
+              : '<svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M15.5 10.5C15.5 14 12.5 17 9 17C7.5 17 6.1 16.5 5 15.6C8.5 15.2 12 12.2 12 8.5c0-1.2-.3-2.3-.8-3.2C13.7 6.1 15.5 8.1 15.5 10.5Z" fill="#FFD600" stroke="#FFD600" stroke-width="2"/></svg>';
+          }
+          updateNightIcon();
+          nightBtn.addEventListener('click', function(){
+            setNightMode(!isNightMode());
+            updateNightIcon();
+          });
+        }
+      }catch(e){console.warn('theme swatch/night mode init err', e)}
+
+// 夜间模式辅助函数
+function isNightMode() {
+  try {
+    return localStorage.getItem('ata_night_mode') === '1'
+  } catch(e) { return false }
+}
+function setNightMode(on) {
+  if (on) {
+    document.body.classList.add('night-mode')
+    try { localStorage.setItem('ata_night_mode', '1') } catch(e){}
+  } else {
+    document.body.classList.remove('night-mode')
+    try { localStorage.setItem('ata_night_mode', '0') } catch(e){}
+  }
+  // 夜间模式切换时刷新--accent-foreground
+  try {
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent') || '#5fb3ff';
+    applyTheme(accent.trim() || '#5fb3ff');
+  } catch(e){}
+}
+// 页面加载时自动应用夜间模式
+try {
+  if (localStorage.getItem('ata_night_mode') === '1') {
+    document.body.classList.add('night-mode')
+  }
+} catch(e){}
 
       // make nickname editable in popover
       try{
