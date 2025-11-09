@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from enum import Enum
 import utils.ai
 
-router = APIRouter(prefix='/judge', tags=['批改答案API'])
+router = APIRouter(prefix='/judge')
 
 class SingleJudgmentRequest(BaseModel):
     problem_id: int
@@ -39,7 +39,7 @@ class SingleJudgmentResponse(BaseModel):
     status: SingleJudgmentStatus
     result: SingleJudgmentScore|None = None
 
-@router.post('/', summary='给回答打分')
+@router.post('', summary='给回答打分')
 def judge(
     reqs: Annotated[
         list[SingleJudgmentRequest],
@@ -90,3 +90,31 @@ def judge(
         ))
     return retl
 
+class InteractionJudgeRequest(BaseModel):
+    problem: str
+    answer: str
+
+class InteractionJudgeStatus(Enum):
+    success = {'code': 0, 'msg': 'Successfully judged.'}
+
+class InteractionJudgeScore(BaseModel):
+    std: str
+    score: int
+    comment: str
+
+class InteractionJudgeResponse(BaseModel):
+    status: InteractionJudgeStatus
+    score: InteractionJudgeScore
+
+@router.post('/interaction', summary='给交流打分')
+def judge_interaction(
+    req: InteractionJudgeRequest
+) -> InteractionJudgeResponse:
+    return InteractionJudgeResponse(
+        status=InteractionJudgeStatus.success,
+        score=InteractionJudgeScore(
+            std='标准答案',
+            score=100,
+            comment='汝乃天骄，何不上九霄？'
+        )
+    )

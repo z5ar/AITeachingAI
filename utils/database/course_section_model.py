@@ -8,6 +8,7 @@ class CourseSection(Base):
     order = sa.Column(sa.Integer, nullable=False)
     title = sa.Column(sa.String(200), nullable=False)
     content = sa.Column(sa.JSON, nullable=False)
+    is_chap_title = sa.Column(sa.Boolean, default=False)
     
     __table_args__ = (
         sa.Index('sec_idx', 'course_id', 'order', unique=True),

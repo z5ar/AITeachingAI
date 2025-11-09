@@ -19,11 +19,13 @@ from .login import router as lirouter
 from .logout import router as lorouter
 from .register import router as regrouter
 from .unregister import router as unregrouter
+from .repasswd import router as repasswdrouter
 
 router = APIRouter(prefix='/auth', tags=['身份认证API'])
 router.include_router(lirouter)
 router.include_router(lorouter)
 router.include_router(regrouter)
 router.include_router(unregrouter)
+router.include_router(repasswdrouter)
 
 __all__ = ('router', )

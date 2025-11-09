@@ -38,6 +38,7 @@ class GetProgressModel(ProgressBaseModel):
     section_id: int
     user_id: int
     started_at: Annotated[datetime, Field(description='初次学习的时间')]
+    updated_at: datetime|None = None
 
     model_config = {
         'json_schema_extra':{
@@ -45,6 +46,7 @@ class GetProgressModel(ProgressBaseModel):
                 'user_id': 114514,
                 'section_id': 1919810,
                 'started_at': datetime.now(),
+                'updated_at': datetime.now(),
                 'percentage': 45.45,
                 'time_spent': 114514,
                 'completed_at': None
@@ -88,7 +90,8 @@ def get_progress(
                     percentage=res.percentage,
                     time_spent=res.time_spent,
                     started_at=res.started_at,
-                    completed_at=res.completed_at
+                    completed_at=res.completed_at,
+                    updated_at=res.updated_at
                 )
             )
     return GetProgressResponse(status=GetProgressStatus.success)
@@ -135,7 +138,8 @@ def set_progress(
                     percentage=new_progress.percentage,
                     time_spent=new_progress.time_spent,
                     completed_at=new_progress.completed_at,
-                    draft=new_progress.draft
+                    draft=new_progress.draft,
+                    updated_at=datetime.now()
                 )
             )
         sss.commit()

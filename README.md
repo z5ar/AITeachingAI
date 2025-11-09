@@ -16,60 +16,94 @@
 [前期课程资料于此](https://github.com/the-real-jushen/aiSummerCamp2025)
 
 ## 0. 写与项目成员
+前端完善：
+[] 学习报告
+[] AI询问
+[] 课程选择页
+[] 保存进度的评判记录
+
 
 **交作业时此部分将删除。**
 
-如果看不懂我写了啥可以不用读，由我来整合各位的成果就好。
+当下需要解决的问题：
 
-各位只需要将代码放在各自的文件夹里即可。
+1. AI需不需要对台词进行改写
 
-前端放在`/static`文件夹中，AI放在`/utils/ai`文件夹中。
+2. AI答疑的参数
+    让AI答疑的时候，上下文该怎么传递。
+    - AI有限额
+    - Web 数据包过大，性能不行
+    - 传的数据多的话，AI思考时间会变长
 
-这份代码的根分支名称叫做`trunk`。
+    已有的AI代码，只传问题，没有上下文。
+    “这里的XXX是什么意思” 这种问题就没法解决了
+    
+3. 到底用什么AI平台
+    老师说可以问他要限额。
+    用什么平台都还没决定。
 
-如何使用这份代码？
-
-假定你们具有基础的工具，如`git`。
-
-### 0.1 前置安装
-
-安装uv。参考[这里](https://docs.astral.sh/uv/getting-started/installation/)。
-
-### 0.2 部署项目
-
-运行以下命令。
-```shell
-git clone https://github.com/z5ar/AITeachingAI.git
-cd ./AITeachingAI
-uv sync
-```
-### 4.3 配置项目
-
-在项目根目录下创建文件`custom_config.toml`，直接将以下内容复制进去。
-```toml
-[database]
-# 填写您的数据库地址，这里使用的是项目根目录下的data/database.db数据库。
-url = 'sqlite:///data/database.db' 
-
-[sessionid]
-# SessionID超时时间，以秒为单位，此处为一周。
-ttl = 604_800
-
-[ai]
-# 您的AI服务Token。
-token = ''
-```
-
-### 4.4 启动服务
-
-在项目根目录中，运行以下指令，即可运行服务。
-```shell
-uv run app.py
+4. AI教师怎么设计？
+    要不要像提交的代码一样，搞一些人设之类的东西。
+    
+5. 脚本的格式。
+```json
+[
+    {
+        "type": "text",
+        "content": "bla bla",
+        "ppt": "/static/ppt/",
+        "note": ""
+    },
+    {
+        "type": "video",
+        "content": "https://...",
+        "description": "这个视频讲了什么。"
+    },
+    {
+        "type": "problem",
+        "content": {"problem_id":1}
+    },
+    {
+        "type": "interaction",
+        "content": "xxxx?"
+    }
+]
 ```
 
-前端注意：
-1. 在浏览器中输入`http://localhost:8000/docs`即可查看后端提供的API接口。需要新接口尽管提，我现在空余时间充裕。
-2. 在浏览器中输入`http://localhost:8000/`就是前端的首页，对应的是`static`文件夹下的`index.html`。
+6. 学习报告
+    - 出现的时机
+        - 小节末
+        - 章节末
+        - 课程末
+    - 包含的内容
+        - 小节末
+            - 学习时长
+            - 互动
+            - 测验
+            - 打分
+            - 评语
+            - ~~老师好感度~~
+        - 作业小节末
+            - 分数
+            - 评语
+        - 章末
+            - 汇总一下上面的内容
+        - 课程末
+            - 汇总一下所有内容
+
+
+7. 报告、PPT的分工。
+    一个人可能做不太来。
+    - 报告：原理性
+    - PPT：展示，女同志
+
+8. 最大的问题：
+    项目还没有做完
+    时间紧迫
+
+9. 交流问题：
+    交流太少，职责之间对接差异大。
+    最后一周，加把劲。
 
 ## 1. 项目分工安排
 
@@ -83,7 +117,7 @@ uv run app.py
 
 ### 2.1 前端
 
-请前端开发填写。
+传统的HTML/CSS/JavaScript开发。
 
 ### 2.2 后端
 

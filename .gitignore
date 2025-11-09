@@ -11,6 +11,7 @@ debug*
 
 # Virtual environments
 .venv
+.vscode
 
 # Data
 custom_config.toml

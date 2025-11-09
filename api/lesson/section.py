@@ -13,25 +13,26 @@ class SectionModel(BaseModel):
     order: Annotated[int, Field(description='该小节在该课程中的顺序号')]
     title: Annotated[str, Field(description='标题')]
     content: Annotated[JsonValue, Field(description='')]
+    is_chap_title: Annotated[bool, Field(description='是否是章标题')]
     
     model_config = {
         'json_schema_extra': {
             'examples':[{
                 "id": 1, "course_id": 1, "order": 1,
                 "title": "Chapter 1: 给公猪做产后护理分几步？",
-                "content": ""
+                "content": "", "is_chap_title": True
             },{
                 "id": 2, "course_id": 1, "order": 2,
                 "title": "1-1 把猪圈门打开",
-                "content": ""
+                "content": "", "is_chap_title": False
             },{
                 "id": 3, "course_id": 1, "order": 3,
                 "title": "1-2 给猪做护理",
-                "content": ""
+                "content": "", "is_chap_title": False
             },{
                 "id": 4, "course_id": 1, "order": 4,
                 "title": "1-3 把猪圈门关上",
-                "content": ""
+                "content": "", "is_chap_title": False
             }]
         }
     }
@@ -56,6 +57,7 @@ def get_section_list(course_id: int) -> SectionResponse:
                 course_id=item.course_id,
                 order=item.order,
                 title=item.title,
-                content=item.content
+                content=item.content,
+                is_chap_title=item.is_chap_title
             ))
     return SectionResponse(status=SectionStatus.success, sections=ret)

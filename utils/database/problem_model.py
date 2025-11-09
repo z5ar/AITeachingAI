@@ -14,4 +14,5 @@ class Problem(Base):
     id = sa.Column(sa.Integer, primary_key=True)
     ptype = sa.Column(sa.Enum(ProblemType), nullable=False)
     problem = sa.Column(sa.Text, nullable=False)
+    arms = sa.Column(sa.JSON)
     answer = sa.Column(sa.JSON)

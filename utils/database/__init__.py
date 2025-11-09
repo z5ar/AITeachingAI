@@ -11,8 +11,9 @@ from .course_model import Course
 from .course_section_model import CourseSection
 from .learning_progress_model import LearningProgress
 from .problem_model import Problem
+from .profile_model import Profile
 
 engine = sa.create_engine(url=config.database.url)
 Base.metadata.create_all(engine)
 
-__all__ = ('engine', 'User', 'SessionID', 'Course', 'CourseSection', 'LearningProgress', 'Problem')
+__all__ = ('engine', 'User', 'SessionID', 'Course', 'CourseSection', 'LearningProgress', 'Problem', 'Profile')
