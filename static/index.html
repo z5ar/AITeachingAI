@@ -1,7 +1,134 @@
-<!DOCTYPE html>
-<head>
-    <title>Hello, world!</title>
-</head>
-<body>
-    <h1>Hello, world!</h1>
-</body>
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>ATA · 学习岛</title>
+    <!-- Use absolute paths so resources load correctly regardless of current URL -->
+    <link rel="stylesheet" href="/static/style.css" />
+    </head>
+    <body>
+        <div id="app">
+        <!-- 学习报告模态 -->
+        <div id="report-modal" class="hidden" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.2);z-index:1001;align-items:center;justify-content:center;">
+            <div style="background:#fff;padding:32px 24px;border-radius:12px;max-width:500px;box-shadow:0 2px 16px #0002;display:flex;flex-direction:column;gap:16px;align-items:center;">
+                <h3 id="report-modal-title">学习报告</h3>
+                <div id="report-modal-content" style="margin-top:8px;color:#444;word-break:break-all;white-space:pre-wrap;max-height:60vh;overflow:auto"></div>
+                <div style="display:flex;gap:16px;margin-top:16px;">
+                    <button id="report-modal-close">关闭</button>
+                </div>
+            </div>
+        </div>
+        <!-- 学习小节模态 -->
+        <div id="section-modal" class="hidden" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.2);z-index:1000;align-items:center;justify-content:center;">
+            <div style="background:#fff;padding:32px 32px;border-radius:14px;max-width:560px;width:min(90vw,560px);box-shadow:0 4px 24px #0003;display:flex;flex-direction:column;gap:20px;align-items:center;">
+                <h3 id="section-modal-title">进入学习</h3>
+                <div id="section-modal-sectionname" style="font-size:1.1em;color:#333"></div>
+                <div id="section-modal-content" style="margin-top:8px;color:#444"></div>
+                <div style="display:flex;gap:16px;margin-top:16px;">
+                    <button id="section-modal-confirm">确定</button>
+                    <button id="section-modal-cancel">取消</button>
+                </div>
+            </div>
+        </div>
+            <header>
+                <h1>ATA · 学习岛</h1>
+                <div id="user-controls">
+                    <div id="user-profile">
+                        <div id="header-avatar" style="width:34px;height:34px;border-radius:50%;overflow:hidden;background:#ddd;margin-right:8px;vertical-align:middle"></div>
+                        <span id="user-status">未登录</span>
+                    </div>
+                    <button id="btn-login">登录</button>
+                    <button id="btn-register">注册</button>
+                    <button id="btn-logout" style="display:none">登出</button>
+                </div>
+                <div id="user-popover" class="hidden"></div>
+            </header>
+
+            <main>
+                <aside id="sidebar">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                        <button id="sidebar-back" style="display:none">← 返回</button>
+                        <h2 id="sidebar-title" style="margin:0">课程</h2>
+                    </div>
+                    <ul id="course-list"></ul>
+                </aside>
+
+                <section id="scene">
+                    <div id="background"></div>
+                    <div id="character">角色</div>
+                    <div id="dialogue">
+                        <div id="ppt-holder" style="display:none;margin-bottom:8px;text-align:center">
+                            <img id="ppt-image" alt="ppt" style="max-width:100%;max-height:48vh;width:auto;height:auto;object-fit:contain;display:inline-block;border-radius:6px;box-shadow:0 1px 6px #0001" />
+                        </div>
+                        <div id="dialogue-content">请选择课程 / 小节</div>
+                        <div id="dialogue-controls">
+                            <button id="next-para" disabled>下一步</button>
+                            <div class="progress-controls" style="display:flex;align-items:center;justify-content:flex-end;width:100%;gap:10px;">
+                                <div id="progress-info" style="color:var(--muted)"></div>
+                                <div id="progress-restore-bar" style="display:none;margin-left:10px;"></div>
+                                <div id="learn-time" title="学习时长" style="margin-left:auto;color:var(--muted);white-space:nowrap;">学习时长：00:00:00</div>
+                                <button id="btn-history">对话历史</button>
+                                <button id="btn-qa">答疑</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- rightpanel removed; sections are shown in the left sidebar and save button moved to dialogue -->
+            </main>
+
+            <!-- 对话历史模态 -->
+            <div id="history-modal" class="hidden" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.25);z-index:1002;align-items:center;justify-content:center;">
+                <div style="background:#fff;padding:24px 20px;border-radius:12px;max-width:600px;width:90%;box-shadow:0 2px 16px #0003;display:flex;flex-direction:column;gap:12px;">
+                    <h3 style="margin:0 0 4px">对话历史</h3>
+                    <div id="history-list" style="max-height:60vh;overflow:auto;font-size:14px;line-height:1.5"></div>
+                    <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:4px;">
+                        <button id="history-clear">清空</button>
+                        <button id="history-close">关闭</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 答疑模态 -->
+            <div id="qa-modal" class="hidden" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.25);z-index:1003;align-items:center;justify-content:center;">
+                <div style="background:#fff;padding:24px 20px;border-radius:12px;max-width:600px;width:90%;box-shadow:0 2px 16px #0003;display:flex;flex-direction:column;gap:12px;">
+                    <h3 style="margin:0 0 4px">答疑</h3>
+                    <label for="qa-input" style="font-size:14px;color:#555">请描述你的问题：</label>
+                    <textarea id="qa-input" rows="4" style="width:100%;resize:vertical"></textarea>
+                    <div id="qa-answer" style="white-space:pre-wrap;color:#333;max-height:40vh;overflow:auto;display:none"></div>
+                    <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:4px;">
+                        <button id="qa-submit">提交</button>
+                        <button id="qa-cancel">关闭</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 登录/注册模态 -->
+            <div id="modal" class="hidden" style="display:none">
+                <div class="modal-inner">
+                    <h3 id="modal-title">登录</h3>
+                    <div class="modal-row"><label>用户名</label><input id="inp-username" /></div>
+                    <div class="modal-row"><label>密码</label><input id="inp-passwd" type="password" /></div>
+                    <div class="modal-row" id="label-passwd2" style="display:none"><label>确认密码</label><input id="inp-passwd2" type="password" /></div>
+                    <div class="modal-row" id="label-nickname" style="display:none"><label>昵称</label><input id="inp-nickname" maxlength="64" /></div>
+                    <div class="modal-row" id="label-newpasswd" style="display:none"><label>新密码</label><input id="inp-new-passwd" type="password" /></div>
+                    <div class="modal-row" id="label-newpasswd2" style="display:none"><label>确认新密码</label><input id="inp-new-passwd2" type="password" /></div>
+                    <div id="modal-hint" class="muted" style="display:none">
+                        用户名规则：长度 4~32（均含本数，下同），仅字母、数字、下划线，且不能以数字开头。<br/>
+                        密码规则：长度 8~32，且包含 大写、小写、数字、符号 中至少三种。<br/>
+                        昵称规则：长度不超过 64 字符。
+                    </div>
+                    <div class="modal-actions">
+                        <button id="modal-submit" type="button">提交</button>
+                        <button id="modal-cancel" type="button">取消</button>
+                    </div>
+                    <div id="modal-msg" class="muted"></div>
+                </div>
+            </div>
+
+        </div>
+
+    <script src="/static/app.js"></script>
+    </body>
+</html>

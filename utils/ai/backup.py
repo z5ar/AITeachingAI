@@ -1,61 +1,80 @@
-from datetime import datetime
-from random import random, choice
+import os
+import json
+import datetime
+import random
 import requests
-from typing import Annotated
-from pydantic import BaseModel
+from typing import List, Dict, Tuple, Optional, Any
 from enum import Enum
-from abc import ABC, abstractmethod
 
-class ScriptType(Enum):
-    text = 'text'
-    video = 'video'
-    problem = 'problem'
-    interaction = 'interaction'
+class InteractionType(Enum):
+    TEXT = "text"
+    VIDEO = "video"
+    PROBLEM = "problem"
+    INTERACTION = "interaction"
+    TEACHER_INTERACTION = "teacher_interaction"  # 新增：教师主动互动类型
 
-class ScriptStep(BaseModel):
-    type: ScriptType
-    content: str
-    ppt: str|None = None
-    description: str|None = None
-    knowledge_point: str|None = None
+class ScriptStep:
+    def __init__(self, 
+                 step_type: InteractionType, 
+                 content: str, 
+                 expected_answer: Optional[str] = None,
+                 options: Optional[List[str]] = None,
+                 video_description: Optional[str] = None,
+                 wait_for_response: bool = False,
+                 notes: Optional[str] = None,
+                 ppt_image: Optional[str] = None,
+                 knowledge_point: Optional[str] = None,
+                 chapter: Optional[str] = None):
+        self.step_type = step_type
+        self.content = content
+        self.expected_answer = expected_answer
+        self.options = options
+        self.video_description = video_description
+        self.wait_for_response = wait_for_response
+        self.notes = notes
+        self.ppt_image = ppt_image
+        self.knowledge_point = knowledge_point
+        self.chapter = chapter
 
-class StudentProgress(object):
-    def __init__(self, student_id: str|None):
+class StudentProgress:
+    def __init__(self, student_id: str):
         self.student_id = student_id
+        self.current_script_step = 0
+        self.interaction_history = []
+        self.quiz_scores = []
+        self.homework_scores = []
+        self.learning_report = {}
         self.affection_level = 50
-        self.affection_history = list()
-        self.start_time = datetime.now()
-        self.last_action_time = datetime.now()
+        self.affection_history = []
+        self.start_time = datetime.datetime.now()
+        self.last_interaction_time = datetime.datetime.now()
         self.learning_duration = 0
+        self.consecutive_teaching_steps = 0  # 新增：连续教学步骤计数
 
-    def update_affection(self, delta: int, reason: str):
+    def update_affection(self, change: int, reason: str):
         old_level = self.affection_level
-        self.affection_level = max(0, min(100, self.affection_level + delta))
+        self.affection_level = max(0, min(100, self.affection_level + change))
         self.affection_history.append({
-            'timestamp': datetime.now(),
+            "timestamp": datetime.datetime.now().isoformat(),
             "old_level": old_level,
             "new_level": self.affection_level,
-            "change": delta,
+            "change": change,
             "reason": reason
         })
 
     def update_learning_duration(self):
-        now = datetime.now()
-        self.learning_duration += (now - self.last_action_time).total_seconds()
-        self.last_action_time = now
-    
-class SiliconFlowClient(object):
+        now = datetime.datetime.now()
+        self.learning_duration += (now - self.last_interaction_time).total_seconds()
+        self.last_interaction_time = now
+
+class SiliconFlowClient:
     def __init__(self, api_key: str):
         self.api_key = api_key.strip()
-        assert self.api_key.startswith('sk-'), 'API密钥格式不正确'
-        self.base_url = 'https://api.siliconflow.cn/v1'
-
-    def chat_completion(
-        self, 
-        messages: list[dict], 
-        model: str = "deepseek-ai/DeepSeek-V3",
-        **kwargs
-    ) -> str:
+        if not self.api_key.startswith("sk-"):
+            print(f"警告: API密钥格式可能不正确: {self.api_key[:10]}...")
+        self.base_url = "https://api.siliconflow.cn/v1"
+    
+    def chat_completion(self, messages: List[Dict], model: str = "deepseek-ai/DeepSeek-V3", **kwargs) -> str:
         url = f"{self.base_url}/chat/completions"
         
         headers = {
@@ -94,91 +113,95 @@ class SiliconFlowClient(object):
             return f"网络请求失败: {str(e)}"
         except Exception as e:
             return f"AI服务暂时不可用: {str(e)}"
-        
-class AITeacher(ABC):
+
+class YukinoshitaYukinoAI:
     def __init__(self, api_key: str):
         self.client = SiliconFlowClient(api_key)
-        self.identity = dict()
-        self.teaching_script = list()
-        self.student_progress = dict()
+        self.identity = {
+            "title": "雪之下雪乃",
+            "signature": "总武高中完美超人，冷静理性的优等生"
+        }
+        self.teaching_script = []
+        self.student_progress = {}
     
-    def load_teaching_script(self, script_data: list[dict]):
-        self.teaching_script = list()
+    def load_teaching_script(self, script_data: List[Dict]):
+        self.teaching_script = []
         for step_data in script_data:
-            step = ScriptStep(**script_data)
+            step = ScriptStep(
+                step_type=InteractionType(step_data["type"]),
+                content=step_data["content"],
+                expected_answer=step_data.get("expected_answer"),
+                options=step_data.get("options"),
+                video_description=step_data.get("video_description"),
+                wait_for_response=step_data.get("wait_for_response", False),
+                notes=step_data.get("notes"),
+                ppt_image=step_data.get("ppt_image"),
+                knowledge_point=step_data.get("knowledge_point"),
+                chapter=step_data.get("chapter")
+            )
             self.teaching_script.append(step)
-
+    
     def get_student_progress(self, student_id: str) -> StudentProgress:
         if student_id not in self.student_progress:
             self.student_progress[student_id] = StudentProgress(student_id)
         return self.student_progress[student_id]
-
-    @abstractmethod
-    def teach_next_step(self, student_id: str, student_response: str|None = None) -> dict:...
-
-    @abstractmethod
-    def answer_question(self, ):...
-
-class YukinoshitaYukinoAI(AITeacher):
-    def __init__(self, api_key):
-        super().__init__(api_key)
-        self.identity = self.identity = {
-            "title": "雪之下雪乃",
-            "signature": "总武高中完美超人，冷静理性的优等生"
-        }
     
-    def _apply_role_style(self, text: str) -> str:
-        if random() < 0.2:
+    def apply_role_style(self, text: str) -> str:
+        if random.random() < 0.2:
             prefixes = ["说起来，", "从学生的角度来说，", "简单来说，"]
-            text = choice(prefixes) + text
+            text = random.choice(prefixes) + text
         
-        if random() < 0.3:
+        if random.random() < 0.3:
             suffixes = ["……这样解释应该能明白吧。", "……其实并不复杂。", "……理解了吗？"]
-            text += choice(suffixes)
+            text += random.choice(suffixes)
             
         return text
-
-    def _build_system_message(self, additional_context: str = '') -> dict:
-        return {
-            "role": "system",
-            "content": f"""
-你正在扮演{self.identity['title']}，{self.identity['signature']}。
-
-角色背景：来自《我的青春恋爱物语果然有问题》中的雪之下雪乃，是总武高中的优等生。
-性格特点：冷静理性、聪明过人、表面高冷但内心温柔，说话直接但有理有据。
-
-语言风格：
-- 使用理性、清晰且通俗易懂的语气
-- 避免使用过于复杂的专业术语，必要时会用简单比喻解释
-- 讲解清晰有条理，逻辑性强
-- 不会过度热情，但会认真负责地教学
-- 避免推眼镜等不相关的动作描述
-
-教学要求：
-- 用通俗易懂的方式详细讲解知识点，就像在给同学讲解一样
-- 不仅要解释概念，还要用生活中的例子来说明
-- 结合实际案例和日常应用进行讲解
-- 保持内容的准确性，但避免过度学术化
-- 适当时候可以分享学习心得和方法
-
-{additional_context}"""}
     
-    def _generate_detailed_explanation(self, topic: str, base_content: str) -> str:
+    def build_system_message(self, additional_context: str = "") -> Dict:
+        role_description = f"""
+        你正在扮演{self.identity['title']}，{self.identity['signature']}。
+
+        角色背景：来自《我的青春恋爱物语果然有问题》中的雪之下雪乃，是总武高中的优等生。
+        性格特点：冷静理性、聪明过人、表面高冷但内心温柔，说话直接但有理有据。
+
+        语言风格：
+        - 使用理性、清晰且通俗易懂的语气
+        - 避免使用过于复杂的专业术语，必要时会用简单比喻解释
+        - 讲解清晰有条理，逻辑性强
+        - 不会过度热情，但会认真负责地教学
+        - 避免推眼镜等不相关的动作描述
+
+        教学要求：
+        - 用通俗易懂的方式详细讲解知识点，就像在给同学讲解一样
+        - 不仅要解释概念，还要用生活中的例子来说明
+        - 结合实际案例和日常应用进行讲解
+        - 保持内容的准确性，但避免过度学术化
+        - 适当时候可以分享学习心得和方法
+
+        {additional_context}
+        """
+        
+        return {"role": "system", "content": role_description}
+    
+    def generate_detailed_explanation(self, topic: str, base_content: str, chapter: str = "") -> str:
         """生成对知识点的通俗易懂解释"""
-        system_message = self._build_system_message(f"请用通俗易懂的方式讲解以下AI知识点，就像在给同学解释一样：")
+        system_message = self.build_system_message(
+            f"请用通俗易懂的方式讲解以下AI知识点，就像在给同学解释一样："
+        )
         
         prompt = f"""
-需要讲解的主题：{topic}
-基础内容：{base_content}
+        需要讲解的主题：{topic}
+        基础内容：{base_content}
+        所属章节：{chapter}
 
-请用雪之下雪乃的风格，用通俗易懂的语言讲解这个AI知识点：
-1. 用简单的语言解释概念的核心思想
-2. 用生活中的例子或比喻来说明
-3. 说明这个技术的实际应用场景
-4. 解释为什么这个技术重要
-5. 避免过于专业的术语，如果必须使用请简单解释
+        请用雪之下雪乃的风格，用通俗易懂的语言讲解这个AI知识点：
+        1. 用简单的语言解释概念的核心思想
+        2. 用生活中的例子或比喻来说明
+        3. 说明这个技术的实际应用场景
+        4. 解释为什么这个技术重要
+        5. 避免过于专业的术语，如果必须使用请简单解释
 
-请确保讲解既准确又容易理解，就像在帮助同学理解一样。
+        请确保讲解既准确又容易理解，就像在帮助同学理解一样。
         """
         
         messages = [
@@ -188,7 +211,7 @@ class YukinoshitaYukinoAI(AITeacher):
         
         response = self.client.chat_completion(messages, temperature=0.7, max_tokens=1200)
         return self.apply_role_style(response)
-
+    
     def generate_teacher_interaction(self, progress: StudentProgress, current_step: ScriptStep) -> str:
         """生成教师主动互动的内容"""
         system_message = self.build_system_message(
@@ -229,7 +252,7 @@ class YukinoshitaYukinoAI(AITeacher):
         ]
         
         response = self.client.chat_completion(messages, temperature=0.8, max_tokens=500)
-        return self._apply_role_style(response)
+        return self.apply_role_style(response)
     
     def should_insert_interaction(self, progress: StudentProgress) -> bool:
         """判断是否应该插入互动"""

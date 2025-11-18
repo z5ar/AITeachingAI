@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from enum import Enum
 import utils.ai
 
-router = APIRouter(prefix='/judge')
+router = APIRouter(prefix='/judge', tags=['回答问题API'])
 
 class SingleJudgmentRequest(BaseModel):
     problem_id: int

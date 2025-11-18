@@ -7,23 +7,9 @@ from utils.database import User, SessionID
 from pydantic import BaseModel
 from . import UserBaseRequest
 import bcrypt
-import secrets
+from utils.auth import gen_sessionid
 
 router = APIRouter()
-
-def _gen_sessionid():
-    with Session(dbengine) as sss:
-        sss.query(SessionID)\
-            .filter(SessionID.expired_at <= datetime.now())\
-            .delete()
-        sss.commit()
-        session_id = secrets.token_urlsafe(24)
-        res = sss\
-            .query(SessionID)\
-            .filter(SessionID.session_id == session_id)
-    if res.count():
-        session_id= _gen_sessionid()
-    return session_id
 
 class LoginStatus(Enum):
     success = {'code': 0, 'msg': 'Successfully logged in.'}
@@ -58,7 +44,7 @@ def user_login(
             .delete()
         sss.commit()
         userid = res.id
-    session_id = _gen_sessionid()
+    session_id = gen_sessionid()
     with Session(dbengine) as sss:
         sss.add(
             SessionID(

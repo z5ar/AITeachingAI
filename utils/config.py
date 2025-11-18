@@ -10,9 +10,13 @@ class DatabaseConfig(BaseModel):
 class SessionIDConfig(BaseModel):
     ttl: Annotated[int, Field(ge=0)]
 
+class AIConfig(BaseModel):
+    token: str
+
 class CustomConfig(BaseModel):
     database: DatabaseConfig
     sessionid: SessionIDConfig
+    ai: AIConfig
 
 def init():
     with open(CONFIG_PATH, 'rb') as f:
