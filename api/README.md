@@ -6,79 +6,64 @@
 
 下面陈列的是对于API功能的简要介绍。后端代码对FastAPI的自动docs生成做了特意编写，故具体API的用法可以在运行服务后使用该docs文档。
 
+---
+
 ### 1. 身份认证API `/api/auth`
 
-#### 1.1 `POST /api/auth/register`: 用户注册
+- `POST /api/auth/register`：用户注册，明文密码经bcrypt加密存储。
+- `POST /api/auth/login`：用户登录，返回SessionID存于Cookie。
+- `POST /api/auth/logout`：用户登出，清除SessionID。
+- `POST /api/auth/unregister`：用户删除，软删除账户（加deleted_at字段）。
+- `POST /api/auth/repasswd`：修改密码。
 
-传入用户名及密码，注册一个用户，以进行后续操作。
+> 生产环境中因为涉及到密码传输建议使用HTTPS，开发时默认使用HTTP仅为方便调试。
 
-原理上传递的密码在后端经过bcrypt加密后存入数据库，保障即使数据库泄露也不会暴露用户的明文密码。
+---
 
-设计上，本接口传输的是明文密码，实际应用中，理应使用HTTPS进行传输，这样配合前述的密码bcrypt加密可保障用户的密码安全。但**为了方便，在app.py中默认启动的是HTTP服务**。
+### 2. 课程与学习进度API `/api/lesson`
 
-#### 1.2. `POST /api/auth/login`：用户登录
+- `GET /api/lesson/course/getAll`：获取所有课程列表。
+- `GET /api/lesson/section/{course_id}/getAll`：获取指定课程的所有小节。
+- `GET /api/lesson/progress/{section_id}/get`：获取当前用户在某小节的学习进度。
+- `POST /api/lesson/progress/{section_id}/set`：更改/新建当前用户在某小节的学习进度。
 
-传入用户名和密码，进行用户的登录。
+#### 教师AI相关
+- `POST /api/lesson/teacher/startSection/{section_id}`：开始小节，返回AI教师的首步内容。
+- `POST /api/lesson/teacher/next_step`：获取AI教师的下一步内容。
+- `POST /api/lesson/teacher/judge`：判定简答题，支持标准答案、满分、评语。
+- `POST /api/lesson/teacher/report`：生成学习报告，传入学习时长与判题明细。
+- `POST /api/lesson/teacher/answer`：答疑接口，传入问题与当前对话context，返回AI教师回答。
 
-使用浏览器Cookies保存SessionID，对于前端是无感的。
+---
 
-#### 1.3. `POST /api/auth/logout`：用户登出
+### 3. 问题相关API `/api/problem`
 
-无需前端传递任何参数，实现用户的退出登录。
+- `POST /api/problem/get`：批量获取题目内容（支持多题ID）。
+- `POST /api/problem/judge`：批量判分（选择题/填空题/多选题/简答题，自动区分题型）。
+- `POST /api/problem/judge/interaction`：判定互动题（特殊类型，返回标准答案与评语）。
 
-原理上使用了1.2所述Cookies中保存的SessionID。
+---
 
-#### 1.4. `POST /api/auth/unregister`：用户删除
+### 4. 个人信息API `/api/profile`
 
-必须在用户既登录的状态下操作，传入用户名和密码，以删除用户账户。
+- `GET /api/profile/whoami`：获取当前用户个人信息（昵称、头像、主题色等）。
+- `POST /api/profile/iamwho`：修改个人信息（昵称、头像、主题色）。
 
-原理上采取了软删除措施，即数据库中给既删除的账户添加一个`deleted_at`字段，标记其已删除，而非直接彻底删除账户数据。有助于恢复数据。
+---
 
-### 2. 课程相关API `/api/lesson`
+### 5. 答疑API `/api/qanda`
 
-#### 2.1 获取所有课程 `GET /api/lesson/course/getAll`
+- `POST /api/qanda/`：AI答疑（接口预留，具体参数和返回值待完善）。
 
-获取所有课程列表。
+---
 
-设计上使用`/course/getAll`二级路径是为了可扩展性，后续可以加入用户添加课程的功能。但为了简化问题，此处只实现了获取系统内置课程的功能。
+## 说明
 
-#### 2.2 获取课程所有小节 `GET /api/lesson/section/{course_id}/getAll`
+- 所有接口均支持自动文档（Swagger UI），可通过 `/docs` 路径访问。
+- 用户身份通过SessionID自动管理，前端无需手动传递。
+- 课程、章节、题目、进度等均有详细的数据模型和示例，便于前后端联调。
+- 教师AI相关接口支持个性化教学流程、自动判题、学习报告生成和答疑。
 
-获取系统内部ID为`course_id`的课程的所有小节。该ID可以在2.1所述API的响应体中获取。
+---
 
-设计上同2.1所述，后续可扩展用户添加课程小节功能。但为了简化问题，只实现了获取课程章节功能。
-
-#### 2.3 获取当前用户在某小节的学习进度 `GET /api/lesson/progress/{section_id}/get`
-
-获取当前登录用户在系统内部ID为`section_id`的小节的学习进度。该ID可以在2.2所述API中获取。
-
-获取当前登录用户仍旧使用浏览器Cookie中保存的SessionID。
-
-#### 2.4 更改当前用户在某小节的学习进度 `SET /api/lesson/progress/{section_id}/set`
-
-更改当前登录用户在系统内部ID为`section_id`的小节的学习进度记录，对于系统内不存在记录的，新建一条记录。该ID可以在2.2所述API中获取。
-
-获取当前登录用户仍旧使用浏览器Cookie中保存的SessionID。
-
-没有实现学习进度记录的删除功能，因为理论上将学习进度改为0可以等效为学习进度的删除。
-
-### 3. 作业批改API `/api/judge`
-
-系统内部对于题目的定义有五类：
-
-```Python
-class ProblemType(Enum):
-    single_choice = 'single_choice'
-    multiple_choice = 'multiple_choice'
-    variable_choice = 'variable_choice'
-    blank_filling = 'blank_filling'
-    brief_response = 'brief_response'
-```
-
-`single_choice`：单项选择题，只能选一个答案的题型。
-`multiple_choice`：多项选择题，至少选两个选项的题型。
-`variable_choice`：不定项选择题，除了不能选零个答案其他都行的题型。只是后端代码编写者对山东高考生物不定项选择的怨念，实际不需要的话可以删除。
-`blank_filling`：填空题，必须回答与参考答案一字不差的题型。
-`brief_response`：简答题，准许一定程度的自由发挥的题型，由AI批改的题型~~，得多少分全靠命运~~。
-
-无论要批改的只有一题还是多题，都要传入一个“由系统内部题目ID`problem_id`和学生答案`answer`组成的对象”的列表，以实现对多题批改的兼容。
+> 如需扩展更多功能（如课程自定义、题库管理、成绩统计等），可参考现有API风格进行开发。
